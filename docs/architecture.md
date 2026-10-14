@@ -1,0 +1,15 @@
+# Architecture and performance contract
+
+`include/logitlab/logistic_regression.hpp` exposes the data/model contracts. `src/logistic.cpp` contains shared dense/CSR kernels and optimization orchestration. `bindings/python.cpp` handles Python conversion and lifetime boundaries; `python/logitlab/` provides the user API. Abseil supplies span views in the core and parsing in historical programs.
+
+Dense storage is row-major float64. CSR stores float64 values, size_t indices and row offsets; public validation requires sorted, unique, in-range indices and monotonic offsets. Public `objective`, `fit` and `predict` validate input. Training validates the dataset once, then calls an internal evaluator to avoid repeated scans. Low-level row kernels assume validated indices and correctly sized spans.
+
+Loss and gradient use the same averaged objective for every modern solver. The intercept is a separate parameter and is never regularized. L-BFGS accepts positive-curvature history pairs and falls back to steepest descent for an invalid direction. Batch solvers use Armijo backtracking. Newton-CG computes curvature once per outer iteration and streams Hessian-vector products; a small diagonal damping term stabilizes the direction solve, without altering the reported objective.
+
+The Python boundary makes one owned dataset representation so callers cannot mutate NumPy memory while the GIL is released. Dense input may need an additional contiguous conversion. Sparse input is copied and canonicalized without densification. This prioritizes correctness and predictable lifetimes over a zero-copy claim. Prediction conversion is another allocation; future profiling should distinguish kernel time from binding overhead.
+
+Portable Release builds use compiler optimization without fast-math or automatic CPU-specific instructions. `LOGITLAB_NATIVE=ON` opts into `-march=native` for local experiments; do not distribute those binaries as portable wheels. No thread parallelism, explicit SIMD, BLAS, streaming or GPU support is claimed. Full gradient logging adds one data pass per stochastic epoch. Model vectors and batch gradients are reused; L-BFGS allocates bounded history pairs. Shuffled row indices are allocated only for stochastic solvers and moment arrays only for Adam.
+
+Dependencies are fetched at fixed Git commits: Abseil 20250127.1 (`d9e4955c65cd4367dd6bf46f4ccb8cd3d100540b`) and pybind11 2.13.6 (`a2e59f0e7065404b44dfe92a28aca47ba1378dc4`). FetchContent exposes CMake targets transitively, avoiding hand-written linker lists. Offline consumers can supply source directories. Python build-tool version ranges are declared in pyproject.toml, not presented as a fully locked Python environment.
+
+The bundled historical archive is deliberately excluded from the modern core. Historical objectives must not be used to claim equivalent modern-solver results. No persistence or scikit-learn estimator compatibility is claimed yet.

@@ -1,3 +1,4 @@
+#include "common/parse.h"
 /*
  * ref paper
  *    http://static.googleusercontent.com/external_content/untrusted_dlcp/research.google.com/en/us/pubs/archive/41159.pdf
@@ -6,18 +7,15 @@
  * how to Parallelized
  *    Parallelized Stochastic Gradient Descent  http://martin.zinkevich.org/publications/nips2010.pdf
  */
-#include <boost/algorithm/string.hpp>
-#include <boost/tokenizer.hpp>
-#include <boost/lexical_cast.hpp>
-#include <tr1/unordered_map>
-#include <tr1/unordered_set>
+#include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include <iostream>
 #include <fstream>
 #include <cmath>
 #include <list>
 #include "data.h"
 using namespace std;
-using namespace std::tr1;
+
 class LR {
 public:
     LR(double a, double b = 1): alpha(a), beta(b) {
@@ -27,16 +25,16 @@ public:
         double e = 2.718281828;
         return 1.0 / (1.0 + pow(e, -x));
     }
-    double classify(const unordered_map<string, double>& x) {
-        unordered_map<string, double>::const_iterator it = x.begin();
+    double classify(const absl::flat_hash_map<string, double>& x) {
+        absl::flat_hash_map<string, double>::const_iterator it = x.begin();
         double y =  0;
         for(; it != x.end(); ++it) {
             y += weight[it->first] * it->second;
         }
         return sigmoid(y);
     }
-    int binary(const unordered_map<string, double>& x) {
-        unordered_map<string, double>::const_iterator it = x.begin();
+    int binary(const absl::flat_hash_map<string, double>& x) {
+        absl::flat_hash_map<string, double>::const_iterator it = x.begin();
         double y =  0;
         for(; it != x.end(); ++it) {
             y += weight[it->first] * it->second;
@@ -49,9 +47,9 @@ public:
         return(0);
     }
     // y: +1,0
-    double update(const unordered_map<string, double>& x, double target, double L1, double L2,  double iter) {
+    double update(const absl::flat_hash_map<string, double>& x, double target, double L1, double L2,  double iter) {
         static int round = 1;
-        unordered_map<string, double>::const_iterator it = x.begin();
+        absl::flat_hash_map<string, double>::const_iterator it = x.begin();
         for(; it != x.end(); ++it) {
             const string& name = it->first;
             if(fabs(zi[name]) <= L1) {
@@ -76,7 +74,7 @@ public:
         return 0;
     }
     void save(ostream& osr) {
-        unordered_map<string, double>::iterator it = weight.begin();
+        absl::flat_hash_map<string, double>::iterator it = weight.begin();
         for(; it != weight.end(); ++it) {
             if(it->second != 0)
                 osr << it->first << ":" << it->second << " ";
@@ -84,10 +82,10 @@ public:
         osr << endl;
     }
 private:
-    unordered_set<string> largerConstrain;
-    unordered_map<string, double> weight;
-    unordered_map<string, double> zi;
-    unordered_map<string, double> ni;
+    absl::flat_hash_set<string> largerConstrain;
+    absl::flat_hash_map<string, double> weight;
+    absl::flat_hash_map<string, double> zi;
+    absl::flat_hash_map<string, double> ni;
     double alpha;
     double beta;
 };
@@ -97,7 +95,7 @@ int main(int argc, char* argv[]) {
         return -1;
     }
     LR model(0.5);
-    typedef unordered_map<string, double> Instance;
+    typedef absl::flat_hash_map<string, double> Instance;
     vector<Instance> dataset;
     vector<double> labels; 
     string line;
@@ -113,22 +111,22 @@ int main(int argc, char* argv[]) {
             //<class/target> [<attribute number>:<attribute value>]*
             Instance features;
             vector<string> strs;
-            boost::split(strs, line, boost::is_any_of("\t ,"));
-            double target = 1;//boost::lexical_cast<double>(strs[0]);
+            logitlab::legacy::split(strs, line, logitlab::legacy::is_any_of("\t ,"));
+            double target = 1;//logitlab::legacy::lexical_cast<double>(strs[0]);
             if(strs[0] == "-1") target = 0;
             else if(strs[0] == "0") target = 0;
             pos += target;
             neg += 1 - target;
-            //double target = boost::lexical_cast<double>(strs[0]);
+            //double target = logitlab::legacy::lexical_cast<double>(strs[0]);
             for(unsigned int i = 1; i < strs.size(); ++i) {
                 vector<string> kvs;
-                boost::split(kvs, strs[i], boost::is_any_of(":"));
+                logitlab::legacy::split(kvs, strs[i], logitlab::legacy::is_any_of(":"));
                 if(kvs.size() == 2) {
-                    features[kvs[0]] = boost::lexical_cast<double>(kvs[1]);
+                    features[kvs[0]] = logitlab::legacy::lexical_cast<double>(kvs[1]);
                 } else if(kvs.size() == 1) {
                     if (csv){
-                        string name = boost::lexical_cast<string>(i-1);
-                        features[name] = boost::lexical_cast<double>(kvs[0]);
+                        string name = logitlab::legacy::feature_name(i-1);
+                        features[name] = logitlab::legacy::lexical_cast<double>(kvs[0]);
                     }
                     else
                         features[kvs[0]] = 1;

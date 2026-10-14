@@ -67,7 +67,7 @@ public:
         //double** x = scale(nx, m, n);
         double**x = nx;
         double* predict = new double[m];
-        auto_ptr<double> ptr(predict);
+        unique_ptr<double[]> ptr(predict);
         double last_mrse = 1e10;
         for(int iter = 0; iter < max_iters; ++iter) {
             //predict
@@ -125,7 +125,7 @@ private:
     double _bias_old;
 };
 int main(int argc, char* argv[]) {
-    if(argc < 4) {
+    if(argc < 5) {
         cerr << "Usage: " << argv[0] << " <train_feature> <train_target> <rows> <cols> [test]" << endl
              << "\t data_file: the training date\n";
         return -1;
@@ -137,7 +137,7 @@ int main(int argc, char* argv[]) {
     double**x = dmatrix(row, col);
     double* y = dvector(row);
     //load_data(train_instance, x,y);  //if train_target\ttrain_feature are merged in one file
-    load_feature(feature, x);
+    csv_load_feature(feature, x);
     load_target(target, y);
     LR model(col);
     model.fit(x, row, col, y, 0.1);
@@ -157,7 +157,7 @@ int main(int argc, char* argv[]) {
         ifstream test(argv[5]);
         string line;
         while(getline(test, line)) {
-            read_csv(line.c_str(), x[0]);
+            csv_read(line.c_str(), x[0]);
             cerr << model.binary(x[0]) << endl;
         }
     }

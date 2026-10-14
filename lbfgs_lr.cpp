@@ -1,3 +1,4 @@
+#include <algorithm>
 //http://people.csail.mit.edu/jrennie/writing/lr.pdf  y=+1,-1
 #include <iostream>
 #include <cmath>
@@ -46,6 +47,7 @@ static lbfgsfloatval_t predict(const T1* x, const T2* weight, int n) {
 }
 static lbfgsfloatval_t evaluate(void *ins, const lbfgsfloatval_t *w, lbfgsfloatval_t *g, const int n, const lbfgsfloatval_t step) {
     lbfgsfloatval_t e = 2.718281828;
+    std::fill(g, g+n, 0.0);
     lbfgsfloatval_t fx = 0.0;
     instance* data = (instance*)ins; 
     double** x = data->x;
@@ -87,7 +89,7 @@ static int progress(
     return 0;
 }
 int main(int argc, char* argv[]) {
-    if(argc < 4) {
+    if(argc < 5) {
         cerr << "Usage: " << argv[0] << " <train_feature> <train_target> <rows> <cols> [test]" << endl
              << "\t data_file: the training date\n";
         return -1;

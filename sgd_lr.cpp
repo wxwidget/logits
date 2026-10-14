@@ -128,7 +128,7 @@ public:
         memset(_weight, 0, sizeof(_weight[0])*_dim);
         //double** x = scale(nx, m, n);
         double* predict = new double[m];
-        auto_ptr<double> ptr(predict);
+        unique_ptr<double[]> ptr(predict);
         for(int i = 0; i < max_iters; ++i) {
             int id = random_pick(m);
             update(nx[id], n, y[id], alpha, l2, l1, i);
@@ -154,7 +154,7 @@ private:
     double _bias;
 };
 int main(int argc, char* argv[]) {
-    if(argc < 4) {
+    if(argc < 5) {
         cerr << "Usage: " << argv[0] << " <train_feature> <train_target> <rows> <cols> [test]" << endl
              << "\t data_file: the training date\n";
         return -1;

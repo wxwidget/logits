@@ -1,0 +1,25 @@
+[build-system]
+requires = ["scikit-build-core>=0.10,<2", "cmake>=3.24", "ninja"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "logitlab"
+version = "0.2.0"
+description = "C++ logistic regression optimization research with dense and CSR Python bindings"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.23", "scipy>=1.9"]
+
+[project.optional-dependencies]
+test = ["pytest>=7", "pytest-cov>=5", "build>=1.2,<2"]
+
+[tool.scikit-build]
+wheel.packages = ["python/logitlab"]
+cmake.build-type = "Release"
+
+[tool.scikit-build.cmake.define]
+LOGITLAB_PYTHON = "ON"
+BUILD_TESTING = "OFF"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

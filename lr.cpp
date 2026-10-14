@@ -67,7 +67,7 @@ public:
         //double** x = scale(nx, m, n);
         double**x = nx;
         double* predict = new double[m];
-        auto_ptr<double> ptr(predict);
+        unique_ptr<double[]> ptr(predict);
         double last_mrse = 1e10;
         for(int iter = 0; iter < max_iters; ++iter) {
             //predict
@@ -125,7 +125,7 @@ private:
     double _bias_old;
 };
 int main(int argc, char* argv[]) {
-    if(argc < 4) {
+    if(argc < 5) {
         cerr << "Usage: " << argv[0] << " <train_feature> <train_target> <rows> <cols> [test]" << endl
              << "\t data_file: the training date\n";
         return -1;

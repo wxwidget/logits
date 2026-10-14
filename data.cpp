@@ -1,9 +1,8 @@
+#include "common/parse.h"
 #include "data.h"
-#include <boost/algorithm/string.hpp>
-#include <boost/tokenizer.hpp>
-#include <boost/lexical_cast.hpp>
 #include <fstream>
-using namespace boost;
+using namespace std;
+using namespace logitlab::legacy;
 double** dmatrix(int row, int col) {
     double** x = new double*[row];
     for(int i = 0; i < row; ++i) {
@@ -26,25 +25,14 @@ double* dvector(int col) {
 void free_vector(double* x){
     delete []x;
 }
-bool ends_with(const string& str, const string& a) {
-    int n = a.size();
-    int s = str.size() - a.size();
-    int i = 0;
-    while(str[s+i] == a[i] && i < n) {
-        i++;
-    }
-    return i == n;
+bool ends_with(const string& str, const string& suffix) {
+    return str.size()>=suffix.size() && str.compare(str.size()-suffix.size(),suffix.size(),suffix)==0;
 }
-void csv_read(const char* in_string, double*x) {
-    const char* pos = in_string;
-    int i = 0;
-    for(; pos - 1 != NULL && pos[0] != '\0' && pos[0] != '#';
-            pos = strchr(pos, ',') + 1) {
-        float value = atof(pos);
-        x[i++] = value;
-    }
+void csv_read(const char* input, double* x) {
+    std::vector<std::string> fields=absl::StrSplit(input, ',');
+    for(std::size_t i=0;i<fields.size();++i)x[i]=logitlab::legacy::lexical_cast<double>(fields[i]);
 }
-void svm_read_line(const string& line, double* x, double y) {
+void svm_read_line(const string& line, double* x, double& y) {
     //libsvm format
     //<class/target> [<attribute number>:<attribute value>]*
     //csv format
@@ -54,7 +42,7 @@ void svm_read_line(const string& line, double* x, double y) {
     double target = 0;
     if(strs[0] == "+1") target = 1;
     else if(strs[0] == "1") target = 1;
-    for(unsigned int i = 0; i < strs.size(); ++i) {
+    for(unsigned int i = 1; i < strs.size(); ++i) {
         vector<string> kvs;
         split(kvs, strs[i], is_any_of(":"));
         if(kvs.size() == 2) { //id:value for libsvm
