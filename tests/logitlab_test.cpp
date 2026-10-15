@@ -59,6 +59,10 @@ int main() {
       o.learning_rate = 0.1;
       o.batch_size = 3;
       auto model = fit(d, o);
+      check(model.history.front().work.full_evaluations == 1, "initial work not counted");
+      check(model.history.front().work.row_visits == d.rows, "initial traversal not counted");
+      check(model.work.row_visits >= d.rows * model.work.full_evaluations,
+            "work count omits objective traversals");
       check(model.history.back().loss < model.history.front().loss, "loss failed to improve");
       auto p = predict(d, model);
       for (std::size_t i = 0; i < p.size(); ++i)
@@ -70,6 +74,14 @@ int main() {
                 << '\n';
     }
     check(sigmoid(1000) == 1 && sigmoid(-1000) == 0, "unstable sigmoid");
+    Options failed_options;
+    failed_options.solver = "gd";
+    failed_options.learning_rate = 1e300;
+    failed_options.max_epochs = 1;
+    auto failed_model = fit(d, failed_options);
+    check(failed_model.status == "line_search_failed", "expected failed search");
+    check(failed_model.work.full_evaluations == 41, "rejected search evaluations not counted");
+    check(failed_model.work.parameter_updates == 0, "rejected steps counted as updates");
     d.labels[0] = 2;
     bool rejected = false;
     try {

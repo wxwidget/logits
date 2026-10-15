@@ -5,6 +5,11 @@ from . import _core
 
 __all__ = ["LogisticRegression"]
 
+def _work(work):
+    return {key: getattr(work, key) for key in (
+        "full_evaluations", "batch_gradients", "hessian_vector_products",
+        "row_visits", "parameter_updates")}
+
 def _dataset(X, y=None):
     if sparse.issparse(X):
         # Validate compressed storage before SciPy canonicalization can dereference indices.
@@ -39,8 +44,10 @@ class LogisticRegression:
         self.intercept_ = result.intercept
         self.converged_ = result.converged
         self.status_ = result.status
+        self.work_ = _work(result.work)
         self.history_ = [dict(epoch=h.epoch, loss=h.loss,
-                              gradient_norm=h.gradient_norm, seconds=h.seconds)
+                              gradient_norm=h.gradient_norm, seconds=h.seconds,
+                              **_work(h.work))
                          for h in result.history]
         return self
 

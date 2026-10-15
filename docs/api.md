@@ -38,8 +38,11 @@ Batch size and history size must be positive even for solvers that do not use th
 - `converged_`: true only when the recorded full gradient meets tolerance.
 - `status_`: `converged`, `max_epochs` or `line_search_failed`.
 - `history_`: dictionaries containing `epoch`, penalized mean `loss`, `gradient_norm`, and C++ `seconds` since fit started. Entry zero evaluates the initial all-zero model. Subsequent entries record accepted outer steps or completed stochastic epochs.
+- `work_`: cumulative `full_evaluations` (joint objective/full-gradient evaluations), `batch_gradients`, `hessian_vector_products`, `row_visits`, and `parameter_updates`. Every history entry also snapshots these counters. Totals include rejected line-search evaluations after the last recorded step.
 
 History adds a full data pass after every stochastic epoch. Timing starts after C++ input validation and optimizer workspace allocation; it excludes Python input conversion. Seed reproducibility is tested on the same toolchain; shuffle order can differ across standard-library implementations.
+
+A row visit is one objective/gradient, mini-batch, curvature or Hessian-vector traversal of a sample. Dividing by the training row count gives equivalent data passes. This is a work proxy, not FLOPs: Newton curvature rows only evaluate scores, other traversals also accumulate vectors, and dense parameter-vector operations are not counted in row visits. Parameter updates count accepted batch steps or stochastic mini-batch steps; a failed line search adds evaluations but no update.
 
 Invalid numeric values, shapes, labels, solver names or zero budgets raise `ValueError`. Negative integer arguments can also be rejected by pybind11 during conversion. Prediction before fitting, non-finite optimization progress and undefined prediction scores raise `RuntimeError`. Infinite prediction scores saturate to 0/1; undefined scores from floating-point cancellation are rejected. A finite dataset with extremely large values can still overflow arithmetic; scale features rather than accepting non-finite progress.
 

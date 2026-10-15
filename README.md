@@ -86,6 +86,20 @@ Link the `logitlab::core` CMake target. The [complete C++ example](examples/trai
 
 ## Reproducible experiments
 
+`benchmarks/suite.py` evaluates all five optimizers on comparable-scale, multiscale, correlated, high-dimensional CSR and bundled real-data scenarios. It compares raw features with training-only RMS scaling in separate unregularized and L2 tracks, calibrates step sizes using training objective, and records repeated fit/prediction measurements, independent SciPy objective gaps, actual data passes and isolated-worker peak RSS.
+
+```bash
+python -m pip install '.[test,benchmark]'
+python benchmarks/suite.py --output build/benchmark-suite
+python benchmarks/report.py --input build/benchmark-suite --output build/benchmark-report
+```
+
+Read the measured **[中文评测报告](benchmarks/reports/2026-10-15/benchmark.zh-CN.md)** or **[English report](benchmarks/reports/2026-10-15/benchmark.en.md)**, with scaling/convergence charts, predictive quality, performance tables and batch/history ablations. Raw results and traces are retained alongside the reports. These compare optimization of the same model family; scaling with fixed L2 also changes the effective regularization.
+
+For a quick protocol check, use `--quick --cases dense_control --seeds 42 --epochs 2 --repeats 1`. Quick runs verify execution and do not support throughput claims.
+
+The original configurable synthetic smoke runner remains available:
+
 ```bash
 python benchmarks/compare.py --rows 10000 --cols 100 --epochs 30
 python benchmarks/compare.py --rows 100000 --cols 10000 --density 0.0005 \

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — Optimizer research benchmark (2026-10-15)
+
+- Reproducible five-scenario optimizer suite with raw/RMS and unregularized/L2 tracks, stratified splits, independent SciPy references and training-only step calibration.
+- Repeated training/prediction timing, isolated-worker post-exec RSS, data/split/source hashes and actual data-pass/HVP/update counters, including rejected line searches.
+- Sparse mini-batch and correlated-feature L-BFGS history ablations; generated Chinese/English reports, figures and retained raw measurements.
+- Protocol and counter-contract tests plus the original benchmark smoke check in CI.
+
 ## 0.2.0 — Modern MVP (2026-10-14)
 
 - C++17 `logitlab` core and `logitlab::core` CMake target with owned dense/CSR data.

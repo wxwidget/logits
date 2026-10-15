@@ -121,13 +121,19 @@ Result fit(const Dataset& d, const Options& o) {
   auto start = std::chrono::steady_clock::now();
   Result result;
   result.status = "max_epochs";
-  double f = objective_unchecked(d, w, o, absl::MakeSpan(g));
+  auto evaluate = [&](absl::Span<const double> parameters, absl::Span<double> gradient) {
+    ++result.work.full_evaluations;
+    result.work.row_visits += d.rows;
+    return objective_unchecked(d, parameters, o, gradient);
+  };
+  double f = evaluate(w, absl::MakeSpan(g));
   auto record = [&](std::size_t epoch) {
     if (!std::isfinite(f) || !std::isfinite(norm(g)))
       throw std::runtime_error("non-finite objective; scale features or reduce learning rate");
     result.history.push_back(
         {epoch, f, norm(g),
-         std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count()});
+         std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count(),
+         result.work});
   };
   record(0);
   for (std::size_t epoch = 1; epoch <= o.max_epochs; ++epoch) {
@@ -140,6 +146,9 @@ Result fit(const Dataset& d, const Options& o) {
       std::shuffle(order.begin(), order.end(), rng);
       for (std::size_t begin = 0; begin < d.rows;) {
         auto count = std::min(o.batch_size, d.rows - begin);
+        ++result.work.batch_gradients;
+        ++result.work.parameter_updates;
+        result.work.row_visits += count;
         std::fill(next_g.begin(), next_g.end(), 0);
         for (std::size_t k = begin; k < begin + count; ++k) {
           auto i = order[k];
@@ -162,7 +171,7 @@ Result fit(const Dataset& d, const Options& o) {
         }
         begin += count;
       }
-      f = objective_unchecked(d, w, o, absl::MakeSpan(g));
+      f = evaluate(w, absl::MakeSpan(g));
     } else {
       direction = g;
       if (o.solver == "lbfgs" && !ss.empty()) {
@@ -180,12 +189,15 @@ Result fit(const Dataset& d, const Options& o) {
       } else if (o.solver == "newton-cg") {
         // Hessian-vector products: no dense p-by-p Hessian allocation.
         std::vector<double> curvature(d.rows), r = g, p = g, hp(n), solution(n, 0);
+        result.work.row_visits += d.rows;
         for (std::size_t i = 0; i < d.rows; ++i) {
           double q = sigmoid(d.dot(i, w) + (o.fit_intercept ? w[d.cols] : 0));
           curvature[i] = q * (1 - q) / d.rows;
         }
         double rr = inner(r, r), initial = rr;
         for (std::size_t k = 0; k < std::min<std::size_t>(n, 50); ++k) {
+          ++result.work.hessian_vector_products;
+          result.work.row_visits += d.rows;
           std::fill(hp.begin(), hp.end(), 0);
           for (std::size_t i = 0; i < d.rows; ++i) {
             double a = curvature[i] * (d.dot(i, p) + (o.fit_intercept ? p[d.cols] : 0));
@@ -220,7 +232,7 @@ Result fit(const Dataset& d, const Options& o) {
       bool accepted = false;
       for (int ls = 0; ls < 40; ++ls) {
         for (std::size_t j = 0; j < n; ++j) candidate[j] = w[j] + step * direction[j];
-        next_f = objective_unchecked(d, candidate, o, absl::MakeSpan(next_g));
+        next_f = evaluate(candidate, absl::MakeSpan(next_g));
         if (std::isfinite(next_f) && next_f <= f + 1e-4 * step * slope) {
           accepted = true;
           break;
@@ -247,6 +259,7 @@ Result fit(const Dataset& d, const Options& o) {
         }
       }
       w.swap(candidate);
+      ++result.work.parameter_updates;
       g.swap(next_g);
       f = next_f;
     }

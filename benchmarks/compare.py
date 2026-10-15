@@ -72,7 +72,7 @@ def main():
                 results=results)
     (a.output/'results.json').write_text(json.dumps(report,indent=2)+'\n')
     with (a.output/'traces.csv').open('w',newline='') as f:
-        writer=csv.DictWriter(f,fieldnames=['seed','solver','epoch','loss','gradient_norm','seconds'])
+        writer=csv.DictWriter(f,fieldnames=list(traces[0]))
         writer.writeheader();writer.writerows(traces)
 
 if __name__=='__main__':main()

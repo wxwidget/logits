@@ -68,17 +68,25 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("tolerance", &Options::tolerance)
       .def_readwrite("seed", &Options::seed)
       .def_readwrite("fit_intercept", &Options::fit_intercept);
+  py::class_<Work>(m, "Work")
+      .def_readonly("full_evaluations", &Work::full_evaluations)
+      .def_readonly("batch_gradients", &Work::batch_gradients)
+      .def_readonly("hessian_vector_products", &Work::hessian_vector_products)
+      .def_readonly("row_visits", &Work::row_visits)
+      .def_readonly("parameter_updates", &Work::parameter_updates);
   py::class_<Iteration>(m, "Iteration")
       .def_readonly("epoch", &Iteration::epoch)
       .def_readonly("loss", &Iteration::loss)
       .def_readonly("gradient_norm", &Iteration::gradient_norm)
-      .def_readonly("seconds", &Iteration::seconds);
+      .def_readonly("seconds", &Iteration::seconds)
+      .def_readonly("work", &Iteration::work);
   py::class_<Result>(m, "Result")
       .def_readonly("weights", &Result::weights)
       .def_readonly("intercept", &Result::intercept)
       .def_readonly("converged", &Result::converged)
       .def_readonly("status", &Result::status)
-      .def_readonly("history", &Result::history);
+      .def_readonly("history", &Result::history)
+      .def_readonly("work", &Result::work);
   m.def("fit", [](const Dataset& data, Options options) {
     // Snapshot options before releasing the GIL: Python may mutate its Options object.
     py::gil_scoped_release release;

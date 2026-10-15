@@ -1,0 +1,7 @@
+{
+  "report_generator_sha256": "317dd6c41eecc2c7690450d8d1e877be7c31057918f17e895b81548bf7931c4c",
+  "results_sha256": "366afa7b8787dc7bdbb0339582730d01d9326cd27b649afc6bbecf30eabb70f9",
+  "traces_sha256": "354443b279d02d2d5a7560ea4e1958e0989b820ec5cdc0a42ff7288b1ad22af5",
+  "matplotlib": "3.11.2",
+  "numpy": "2.5.4"
+}

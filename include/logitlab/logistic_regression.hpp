@@ -27,9 +27,16 @@ struct Options {
   std::uint64_t seed = 42;
   bool fit_intercept = true;
 };
+// A row visit is one objective/gradient, batch, curvature or HVP traversal.
+// It is a work proxy, not a FLOP count; parameter-vector work is separate.
+struct Work {
+  std::size_t full_evaluations = 0, batch_gradients = 0, hessian_vector_products = 0;
+  std::size_t row_visits = 0, parameter_updates = 0;
+};
 struct Iteration {
   std::size_t epoch;
   double loss, gradient_norm, seconds;
+  Work work;
 };
 struct Result {
   std::vector<double> weights;
@@ -37,6 +44,7 @@ struct Result {
   bool converged = false;
   std::string status;
   std::vector<Iteration> history;
+  Work work;
 };
 double sigmoid(double x);
 // Mean binary cross-entropy + l2/2 * ||w||^2; intercept is not penalized.
