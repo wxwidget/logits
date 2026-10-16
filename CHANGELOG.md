@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 — Linear regression and analysis (2026-10-16)
+
+- C++ OLS/WLS, Ridge, Lasso and Elastic Net with dense/CSR input, normalized sample weights and unpenalized intercept.
+- Matrix-free Jacobi-preconditioned CG, proximal GD and monotone restarted FISTA with explicit stationarity/work histories.
+- Nonnegative, per-feature box, fixed-coefficient and intercept bounds; invalid combinations rejected.
+- Python regression metrics/residuals and restricted SVD-based OLS/WLS inference with classical/HC3 covariance, intervals and influence diagnostics.
+- TDD solution/statistics/constraint/edge tests, C++/Python examples and regression model/optimizer benchmarks with validation-only penalty selection and bilingual reports.
+
 ## Unreleased — Optimizer research benchmark (2026-10-15)
 
 - Reproducible five-scenario optimizer suite with raw/RMS and unregularized/L2 tracks, stratified splits, independent SciPy references and training-only step calibration.

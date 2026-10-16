@@ -1,12 +1,12 @@
 # LogitLab
 
-**Logistic regression optimization research: a C++17 core with a NumPy/SciPy interface.**
+**Linear and logistic regression research: a C++17 core with a NumPy/SciPy interface.**
 
-[Quick start](#quick-start) · [Python API](docs/api.md) · [C++ architecture](docs/architecture.md) · [Benchmarks](docs/benchmarking.md) · [Development](docs/development.md)
+[Quick start](#quick-start) · [Linear regression](docs/linear-regression.md) · [Python API](docs/api.md) · [Benchmarks](docs/benchmarking.md) · [Development](docs/development.md)
 
-LogitLab compares optimizers using the same binary logistic loss, regularization and dense/CSR kernels. It reports loss, full-gradient norm, elapsed time and termination status so you can study how an algorithm reaches a solution and how that solution performs on held-out data.
+LogitLab studies model regularization and optimization on shared dense/CSR kernels. Binary logistic regression has five optimizers; linear regression adds OLS/WLS, Ridge, Lasso, Elastic Net, explicit coefficient constraints and OLS analysis. Histories, numerical references and held-out benchmarks connect optimization progress with predictive quality.
 
-The repository is named **logits**; the Python package and C++ namespace are **logitlab**. Version 0.2.0 is the first modern MVP. Kernels currently run on one CPU thread and training holds the dataset in memory.
+The repository is named **logits**; the Python package and C++ namespace are **logitlab**. Version **0.3.0** adds linear regression and analysis. Kernels currently run on one CPU thread and training holds the dataset in memory.
 
 ## Quick start
 
@@ -43,7 +43,34 @@ sparse_model = LogisticRegression(l2=0.1).fit(csr_matrix(X), y)
 
 Inputs must be finite, two-dimensional and nonempty, with binary labels exactly 0/1. Sparse inputs are checked and canonicalized to CSR without densification. Features should be scaled using training data only; avoid centering sparse features. See [the walkthrough](docs/getting-started.md) for complete dense, sparse and C++ examples.
 
-## One objective, five optimizers
+## Linear models, constraints and analysis
+
+```python
+import numpy as np
+from logitlab import LinearRegression, Ridge, Lasso, ElasticNet
+
+rng = np.random.default_rng(42)
+X = rng.normal(size=(400, 4))
+y = X @ [2., -1., 0., .5] + 3 + rng.normal(scale=.5, size=400)
+X_train, X_test = X[:320], X[320:]
+y_train, y_test = y[:320], y[320:]
+linear = LinearRegression().fit(X_train, y_train)
+print(linear.evaluate(X_test, y_test))  # MSE, RMSE, MAE, R², explained variance
+ridge = Ridge(alpha=0.01).fit(X_train, y_train)
+sparse_model = Lasso(alpha=0.01).fit(X_train, y_train)
+elastic = ElasticNet(alpha=0.01, l1_ratio=0.5).fit(X_train, y_train)
+bounded = LinearRegression(
+    positive=True, bounds=(0., 2.), fixed_coefficients={2: 0.}
+).fit(X_train, y_train)
+```
+
+Linear models minimize weighted mean squared loss/2 plus L1 and L2 penalties; the intercept is unpenalized. Matrix-free preconditioned CG handles OLS/Ridge. Proximal gradient and monotone restarted FISTA handle L1, nonnegative, box and fixed coefficients. All support dense/CSR inputs; weights are passed through fit(sample_weight=...).
+
+For a converged unregularized/unconstrained dense OLS fit, linear.summary(X_train, y_train, covariance="HC3") provides coefficient uncertainty, confidence intervals, adjusted R², AIC/BIC and influence diagnostics. Inference checks rank, degrees of freedom and fit stationarity; it does not apply ordinary OLS significance tests to penalized/constrained models. [Objective conventions, constraints and examples →](docs/linear-regression.md)
+
+The work followed **TDD**, including observed failing tests for the new API, solver precision and numerical edge cases. [RED/GREEN record →](docs/tdd-linear-regression.md)
+
+## Logistic regression: one objective, five optimizers
 
 Every modern solver minimizes
 
@@ -86,6 +113,18 @@ Link the `logitlab::core` CMake target. The [complete C++ example](examples/trai
 
 ## Reproducible experiments
 
+The **linear regression study** selects regularization on validation data, compares CG/proximal GD/FISTA against independent optimal references, and measures prediction error, coefficient recovery, constraint feasibility, training cost and memory:
+
+```bash
+python -m pip install '.[test,benchmark]'
+python benchmarks/linear_suite.py --output build/linear-benchmark
+python benchmarks/linear_report.py --input build/linear-benchmark --output build/linear-report
+```
+
+[线性回归中文报告](benchmarks/reports/2026-10-16-linear/linear.zh-CN.md) · [English regression report](benchmarks/reports/2026-10-16-linear/linear.en.md)
+
+The separate **logistic optimizer study** remains reproducible:
+
 `benchmarks/suite.py` evaluates all five optimizers on comparable-scale, multiscale, correlated, high-dimensional CSR and bundled real-data scenarios. It compares raw features with training-only RMS scaling in separate unregularized and L2 tracks, calibrates step sizes using training objective, and records repeated fit/prediction measurements, independent SciPy objective gaps, actual data passes and isolated-worker peak RSS.
 
 ```bash
@@ -112,7 +151,7 @@ Compare time to the same target objective or gradient tolerance across several s
 
 ## Validation and contribution
 
-The suite checks independently computed gradients and SciPy optima, all five solvers, dense/CSR agreement, invalid storage/parameters, extreme margins, convergence status, intercept semantics and seeded training. C++ checks remain active in Release builds; sanitizer and source-package/wheel jobs are configured in CI. [MVP acceptance record →](docs/mvp-validation.md)
+The suite checks independent logistic/linear gradients and optima, dense/CSR agreement, weighted fits, L1 closed forms, parameter bounds, classical/HC3 inference, numerical edge cases and benchmark split/selection rules. C++ checks remain active in Release builds; sanitizer and source-package/wheel jobs run in CI. [Linear TDD record →](docs/tdd-linear-regression.md) · [Original MVP acceptance →](docs/mvp-validation.md)
 
 Use [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow. Performance changes should include reproducible convergence traces and numerical checks. [CHANGELOG.md](CHANGELOG.md) describes the MVP; streaming, multicore kernels, lazy sparse updates and further variance-reduction solvers remain future work.
 

@@ -1,5 +1,7 @@
 # Python API and numerical contract
 
+This page documents LogisticRegression. For LinearRegression, Ridge, Lasso, ElasticNet, WLS, coefficient constraints and classical/HC3 regression analysis, see [the linear API](linear-regression.md).
+
 ```python
 from logitlab import LogisticRegression
 model = LogisticRegression(solver="lbfgs", l2=0.1).fit(X, y)

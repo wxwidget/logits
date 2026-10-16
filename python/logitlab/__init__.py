@@ -1,16 +1,17 @@
-"""C++ logistic regression with a small NumPy/SciPy interface."""
+"""C++ linear and logistic regression with NumPy/SciPy interfaces."""
 import numpy as np
 from scipy import sparse
 from . import _core
 
-__all__ = ["LogisticRegression"]
+__all__ = ["LogisticRegression", "LinearRegression", "Ridge", "Lasso", "ElasticNet",
+           "regression_metrics"]
 
 def _work(work):
     return {key: getattr(work, key) for key in (
         "full_evaluations", "batch_gradients", "hessian_vector_products",
         "row_visits", "parameter_updates")}
 
-def _dataset(X, y=None):
+def _dataset(X, y=None, binary_labels=True):
     if sparse.issparse(X):
         # Validate compressed storage before SciPy canonicalization can dereference indices.
         X = X.copy()
@@ -20,8 +21,8 @@ def _dataset(X, y=None):
         X.check_format(full_check=True)
         X.sum_duplicates()
         X.sort_indices()
-        return _core.Dataset.csr(X.data, X.indices, X.indptr, *X.shape, y)
-    return _core.Dataset.dense(np.asarray(X, dtype=np.float64), y)
+        return _core.Dataset.csr(X.data, X.indices, X.indptr, *X.shape, y, binary_labels)
+    return _core.Dataset.dense(np.asarray(X, dtype=np.float64), y, binary_labels)
 
 class LogisticRegression:
     """Minimize mean binary log loss plus l2/2 times squared weight norm.
@@ -59,3 +60,8 @@ class LogisticRegression:
 
     def predict(self, X):
         return (self.predict_proba(X)[:, 1] >= 0.5).astype(np.int64)
+
+
+# Loaded after conversion helpers to avoid circular initialization.
+from .analysis import regression_metrics
+from .linear import ElasticNet, Lasso, LinearRegression, Ridge

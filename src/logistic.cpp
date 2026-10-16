@@ -19,7 +19,7 @@ void require(bool b, const char* message) {
   if (!b) throw std::invalid_argument(message);
 }
 }  // namespace
-void Dataset::validate(bool labels_required) const {
+void Dataset::validate(bool labels_required, bool binary_labels) const {
   require(rows > 0 && cols > 0, "data must have positive dimensions");
   require(rows < std::numeric_limits<std::size_t>::max(), "row count overflow");
   require(cols < std::numeric_limits<std::size_t>::max(), "column count overflow");
@@ -43,7 +43,10 @@ void Dataset::validate(bool labels_required) const {
   for (double v : values) require(std::isfinite(v), "features must be finite");
   if (labels_required) {
     require(labels.size() == rows, "label count does not match rows");
-    for (double y : labels) require(y == 0 || y == 1, "labels must be 0 or 1");
+    for (double y : labels) {
+      require(std::isfinite(y), "targets must be finite");
+      if (binary_labels) require(y == 0 || y == 1, "labels must be 0 or 1");
+    }
   }
 }
 double Dataset::dot(std::size_t row, absl::Span<const double> w) const {

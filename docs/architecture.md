@@ -1,6 +1,10 @@
 # Architecture and performance contract
 
-`include/logitlab/logistic_regression.hpp` exposes the data/model contracts. `src/logistic.cpp` contains shared dense/CSR kernels and optimization orchestration. `bindings/python.cpp` handles Python conversion and lifetime boundaries; `python/logitlab/` provides the user API. Abseil supplies span views in the core and parsing in historical programs.
+`include/logitlab/logistic_regression.hpp` exposes shared data/work contracts and the logistic model. `include/logitlab/linear_regression.hpp` adds the continuous-target API. `src/logistic.cpp` contains shared dense/CSR row kernels and logistic optimization; `src/linear.cpp` implements weighted linear objectives, matrix-free preconditioned CG and constrained proximal solvers. `bindings/python.cpp` handles conversion/lifetimes; `python/logitlab/` provides model interfaces and optional NumPy/SciPy inference. Abseil supplies span views in the core and parsing in historical programs.
+
+Dataset validation defaults to binary targets for backward compatibility. Linear entry points explicitly select finite continuous targets; logistic entry points still reject other labels. The owned storage and row kernels are shared.
+
+Linear parameter bounds form a separable box. Soft thresholding followed by clipping is the exact proximal operator for L1 plus that box; equal endpoints enforce fixed values. FISTA extrapolation is internal, while accepted history/returned coefficients remain feasible. CG diagonal preconditioning streams features once; it never forms a Gram matrix. Weight normalization is invariant to overall weight scale and zero-weight rows skip kernels. OLS covariance/inference is an explicit dense analysis operation with allocation limits, separate from sparse training/prediction.
 
 Dense storage is row-major float64. CSR stores float64 values, size_t indices and row offsets; public validation requires sorted, unique, in-range indices and monotonic offsets. Public `objective`, `fit` and `predict` validate input. Training validates the dataset once, then calls an internal evaluator to avoid repeated scans. Low-level row kernels assume validated indices and correctly sized spans.
 

@@ -1,5 +1,22 @@
 # Benchmark protocol
 
+## Linear regression, model selection and constraints
+
+- [English regression report](../benchmarks/reports/2026-10-16-linear/linear.en.md)
+- [线性回归中文报告](../benchmarks/reports/2026-10-16-linear/linear.zh-CN.md)
+
+```bash
+python -m pip install '.[test,benchmark]'
+python benchmarks/linear_suite.py --output build/linear-benchmark
+python benchmarks/linear_report.py --input build/linear-benchmark --output build/linear-report
+```
+
+The linear suite compares OLS/Ridge/Lasso/Elastic Net, WLS under known heteroscedasticity, and nonnegative/box-fixed domain priors. Six synthetic cases use fixed shared train/validation/test splits, three seeds and three measured repetitions. Ridge/Lasso/Elastic Net select α from four candidates using independent reference fits and validation MSE, then every applicable C++ solver receives the same selected objective. Test labels never select parameters.
+
+NumPy/SciPy solve independently formulated weighted/augmented least squares and bounds; scikit-learn coordinate descent verifies L1. These are optional benchmark dependencies, not C++ runtime dependencies. Raw/RMS feature representations preserve OLS predictions; regularized pipelines reselect penalties because scaling changes their meaning. Bounds and fixed values are transformed into the correct input coordinates.
+
+Reports distinguish reference predictive quality, actual finite-budget quality, stationarity, normalized objective gaps, final/ever target counts, data passes, latency, prediction throughput and whole-worker post-exec peak memory. Full iteration traces retain repeat zero; all timing repetitions retain metrics and first-target evidence. Reports reject missing/duplicate measurement slots.
+
 ## Measured optimizer study
 
 - [English report](../benchmarks/reports/2026-10-15/benchmark.en.md)
