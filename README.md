@@ -113,6 +113,15 @@ Link the `logitlab::core` CMake target. The [complete C++ example](examples/trai
 
 ## Reproducible experiments
 
+**Kaggle real-data workflow:** [中文指南](docs/kaggle-benchmark.zh-CN.md) · [English guide](docs/kaggle-benchmark.md). Breast Cancer examines numerical scaling/correlation, Adult examines imbalanced one-hot CSR classification, and Insurance compares linear regularization. The downloader records observed versions/licenses and hashes; the runner produces bilingual quality/performance reports. **Actual Kaggle measurements are pending cloud network allowlist activation; the offline protocol has been tested.**
+
+```bash
+python -m pip install '.[test,benchmark]'
+python benchmarks/kaggle_data.py
+python benchmarks/kaggle_suite.py --output build/kaggle-benchmark
+python benchmarks/kaggle_report.py --input build/kaggle-benchmark --output build/kaggle-report
+```
+
 The **linear regression study** selects regularization on validation data, compares CG/proximal GD/FISTA against independent optimal references, and measures prediction error, coefficient recovery, constraint feasibility, training cost and memory:
 
 ```bash

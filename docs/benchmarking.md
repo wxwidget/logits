@@ -1,5 +1,13 @@
 # Benchmark protocol
 
+## Kaggle real-data study
+
+[English protocol and commands](kaggle-benchmark.md) · [中文说明](kaggle-benchmark.zh-CN.md)
+
+The Kaggle runner covers correlated numeric classification (Breast Cancer), imbalanced one-hot CSR classification (Adult), and mixed-feature linear regression (Insurance). It downloads versioned public archives with observed-license and checksum records, learns preprocessing only on training rows, compares raw/RMS, and generates matching English/Chinese quality and performance reports.
+
+**Current status:** offline protocol tests pass; actual downloads/measurements await activation of the cloud network allowlist. No real Kaggle results are claimed. The linked guide explains the exact environment-setting step and the independent checks completed.
+
 ## Linear regression, model selection and constraints
 
 - [English regression report](../benchmarks/reports/2026-10-16-linear/linear.en.md)
