@@ -1,5 +1,7 @@
 # Python API and numerical contract
 
+The canonical GLM API (`GeneralizedLinearModel`) and C++ interface are documented in [Generalized linear models](generalized-linear-model.md). It supports Gaussian/identity, Binomial/logit and Poisson/log with weights, offsets, exposures, dense/CSR storage and weighted mean deviance.
+
 This page documents LogisticRegression. For LinearRegression, Ridge, Lasso, ElasticNet, WLS, coefficient constraints and classical/HC3 regression analysis, see [the linear API](linear-regression.md).
 
 ```python

@@ -1,12 +1,12 @@
 # LogitLab
 
-**Linear and logistic regression research: a C++17 core with a NumPy/SciPy interface.**
+**Linear, logistic and generalized linear models: a C++17 core with a NumPy/SciPy interface.**
 
-[Quick start](#quick-start) · [Linear regression](docs/linear-regression.md) · [Python API](docs/api.md) · [Benchmarks](docs/benchmarking.md) · [Development](docs/development.md)
+[Quick start](#quick-start) · [Generalized linear models](docs/generalized-linear-model.md) · [Linear regression](docs/linear-regression.md) · [Python API](docs/api.md) · [Benchmarks](docs/benchmarking.md) · [Development](docs/development.md)
 
 LogitLab studies model regularization and optimization on shared dense/CSR kernels. Binary logistic regression has five optimizers; linear regression adds OLS/WLS, Ridge, Lasso, Elastic Net, explicit coefficient constraints and OLS analysis. Histories, numerical references and held-out benchmarks connect optimization progress with predictive quality.
 
-The repository is named **logits**; the Python package and C++ namespace are **logitlab**. Version **0.3.0** adds linear regression and analysis. Kernels currently run on one CPU thread and training holds the dataset in memory.
+The repository is named **logits**; the Python package and C++ namespace are **logitlab**. Version **0.4.0** adds canonical generalized linear models to the existing linear regression and analysis. Kernels currently run on one CPU thread and training holds the dataset in memory.
 
 ## Quick start
 
@@ -42,6 +42,27 @@ sparse_model = LogisticRegression(l2=0.1).fit(csr_matrix(X), y)
 ```
 
 Inputs must be finite, two-dimensional and nonempty, with binary labels exactly 0/1. Sparse inputs are checked and canonicalized to CSR without densification. Features should be scaled using training data only; avoid centering sparse features. See [the walkthrough](docs/getting-started.md) for complete dense, sparse and C++ examples.
+
+## Generalized linear models (GLM)
+
+One C++ matrix-free Newton-CG solver supports three canonical families:
+
+| Family | Link | Conditional mean |
+| --- | --- | --- |
+| Gaussian | identity | Real-valued response |
+| Binomial | logit | Probability / proportion in `[0, 1]` |
+| Poisson | log | Nonnegative expected count |
+
+```python
+from logitlab import GeneralizedLinearModel
+
+glm = GeneralizedLinearModel(family="poisson", l2=0.01)
+glm.fit([[0.], [1.], [2.], [3.]], [1., 2., 4., 7.], exposure=[1., 1., 2., 2.])
+print(glm.predict([[1.], [2.]], exposure=[1., 2.]))
+print(glm.status_, glm.history_[-1]["gradient_norm"])
+```
+
+Dense/CSR input, sample weights, offsets and Poisson exposures share the same interface. `predict` returns the conditional mean for every family; Binomial also provides `predict_proba`. Offsets/exposures must be supplied again when predicting. Weighted mean deviance is evaluated in C++ from the linear predictor, including saturated probabilities. Invalid family/link pairs and non-finite inputs fail explicitly. [Mathematics, C++ API, limitations and TDD evidence →](docs/generalized-linear-model.md)
 
 ## Linear models, constraints and analysis
 
@@ -160,7 +181,7 @@ Compare time to the same target objective or gradient tolerance across several s
 
 ## Validation and contribution
 
-The suite checks independent logistic/linear gradients and optima, dense/CSR agreement, weighted fits, L1 closed forms, parameter bounds, classical/HC3 inference, numerical edge cases and benchmark split/selection rules. C++ checks remain active in Release builds; sanitizer and source-package/wheel jobs run in CI. [Linear TDD record →](docs/tdd-linear-regression.md) · [Original MVP acceptance →](docs/mvp-validation.md)
+The suite checks independent logistic/linear/GLM gradients and optima, dense/CSR agreement, weighted fits, offsets/exposures, deviance, L1 closed forms, parameter bounds, classical/HC3 inference, numerical edge cases and benchmark split/selection rules. C++ checks remain active in Release builds; sanitizer and source-package/wheel jobs run in CI. [GLM validation →](docs/generalized-linear-model.md#tdd-and-validation) · [Linear TDD record →](docs/tdd-linear-regression.md) · [Original MVP acceptance →](docs/mvp-validation.md)
 
 Use [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow. Performance changes should include reproducible convergence traces and numerical checks. [CHANGELOG.md](CHANGELOG.md) describes the MVP; streaming, multicore kernels, lazy sparse updates and further variance-reduction solvers remain future work.
 

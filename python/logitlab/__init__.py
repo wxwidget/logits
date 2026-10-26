@@ -4,7 +4,7 @@ from scipy import sparse
 from . import _core
 
 __all__ = ["LogisticRegression", "LinearRegression", "Ridge", "Lasso", "ElasticNet",
-           "regression_metrics"]
+           "regression_metrics", "GeneralizedLinearModel"]
 
 def _work(work):
     return {key: getattr(work, key) for key in (
@@ -65,3 +65,4 @@ class LogisticRegression:
 # Loaded after conversion helpers to avoid circular initialization.
 from .analysis import regression_metrics
 from .linear import ElasticNet, Lasso, LinearRegression, Ridge
+from .glm import GeneralizedLinearModel

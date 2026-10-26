@@ -1,5 +1,7 @@
 # Benchmark protocol
 
+Canonical Gaussian/Binomial/Poisson GLMs now have [independent numerical reference checks](generalized-linear-model.md#tdd-and-validation) and a held-out exposure-aware example. The measured reports below predate the new GLM solver; they do not establish Poisson throughput or compare GLM distribution families.
+
 ## Kaggle real-data study
 
 [English protocol and commands](kaggle-benchmark.md) · [中文说明](kaggle-benchmark.zh-CN.md)

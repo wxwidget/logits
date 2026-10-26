@@ -4,8 +4,8 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "logitlab"
-version = "0.3.0"
-description = "C++ linear and logistic regression research with dense and CSR Python bindings"
+version = "0.4.0"
+description = "C++ linear, logistic and generalized linear models with dense and CSR Python bindings"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = ["numpy>=1.23", "scipy>=1.9"]

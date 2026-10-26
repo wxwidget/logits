@@ -70,8 +70,8 @@ Run standalone C++ tests/examples under sanitizers. Historical executables are n
 
 ```bash
 python -m build --sdist
-python -m pip wheel --no-deps dist/logitlab-0.3.0.tar.gz -w dist
-python -m pip install --force-reinstall --no-deps dist/logitlab-0.3.0-*.whl
+python -m pip wheel --no-deps dist/logitlab-0.4.0.tar.gz -w dist
+python -m pip install --force-reinstall --no-deps dist/logitlab-0.4.0-*.whl
 python -m pytest -q
 ```
 

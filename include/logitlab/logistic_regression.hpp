@@ -8,7 +8,7 @@
 
 namespace logitlab {
 // Owned float64 row-major dense or canonical CSR. Target domain is validated
-// by the entry point: binary for logistic, finite real for linear regression.
+// by the entry point: binary for logistic, real for linear, family-specific for GLM.
 // CSR indices must be sorted and unique. Entry points validate before computation.
 struct Dataset {
   std::size_t rows = 0, cols = 0;
