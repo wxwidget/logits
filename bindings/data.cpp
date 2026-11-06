@@ -2,8 +2,10 @@
 
 #include <cstdint>
 #include <stdexcept>
+#include <type_traits>
 
 #include "common.hpp"
+#include "detail/simd.hpp"
 #include "logitlab/dataset.hpp"
 namespace logitlab::bindings {
 namespace {
@@ -12,12 +14,20 @@ template <class Integer>
 std::vector<std::size_t> copy_integers(const py::array& array, const char* negative_message) {
   py::array_t<Integer, py::array::c_style | py::array::forcecast> values(array);
   if (values.ndim() != 1) throw std::invalid_argument("CSR arrays must be one dimensional");
-  std::vector<std::size_t> result;
-  result.reserve(values.size());
+  std::vector<std::size_t> result(values.size());
+#if LOGITLAB_HAS_AVX2
+  if constexpr (std::is_same_v<Integer, std::int32_t>) {
+    if (detail::simd::enabled()) {
+      if (!detail::simd::copy_indices32(values.data(), result.data(), result.size()))
+        throw std::invalid_argument(negative_message);
+      return result;
+    }
+  }
+#endif
   for (py::ssize_t k = 0; k < values.size(); ++k) {
     const auto value = values.data()[k];
     if (value < 0) throw std::invalid_argument(negative_message);
-    result.push_back(static_cast<std::size_t>(value));
+    result[static_cast<std::size_t>(k)] = static_cast<std::size_t>(value);
   }
   return result;
 }

@@ -186,3 +186,13 @@ def test_csr_binding_owns_and_validates_integer_storage(dtype, strided):
     )
     with pytest.raises(ValueError):
         _core.Dataset.csr([1.0], np.array([-1], dtype=dtype), [0, 1], 1, 2, [0.0])
+
+
+@pytest.mark.parametrize("position", [0, 7, 8, 16])
+def test_csr_negative_index_in_packet_or_tail(position):
+    from logitlab import _core
+
+    indices = np.arange(17, dtype=np.int32)
+    indices[position] = -1
+    with pytest.raises(ValueError, match="negative CSR index"):
+        _core.Dataset.csr(np.ones(17), indices, [0, 17], 1, 17, [1.0])

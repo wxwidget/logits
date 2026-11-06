@@ -1,4 +1,5 @@
 #include <cmath>
+#include <cstdint>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -69,6 +70,23 @@ int main() {
     detail::ObservationWeights a(3, std::vector<double>{1e300, 0, 1e300});
     check(a[0] == .5 && a[1] == 0 && a[2] == .5, "weight normalization");
     check(std::isnan(detail::norm(std::vector<double>{NAN})), "NaN norm hidden");
+#if LOGITLAB_HAS_AVX2
+    if (detail::simd::enabled()) {
+      std::vector<std::int32_t> source(17);
+      std::vector<std::size_t> converted(17);
+      for (std::size_t j = 0; j < source.size(); ++j) source[j] = static_cast<std::int32_t>(j);
+      check(detail::simd::copy_indices32(source.data(), converted.data(), source.size()),
+            "valid int32 indices rejected");
+      for (std::size_t j = 0; j < source.size(); ++j)
+        check(converted[j] == j, "int32 widening changed an index");
+      for (std::size_t j : {0, 7, 8, 16}) {
+        source[j] = -1;
+        check(!detail::simd::copy_indices32(source.data(), converted.data(), source.size()),
+              "negative int32 index accepted");
+        source[j] = static_cast<std::int32_t>(j);
+      }
+    }
+#endif
     std::vector<double> finite_values(35, std::numeric_limits<double>::max());
     check(detail::finite(finite_values), "finite maximum rejected");
     for (std::size_t position : {0, 4, 16, 34}) {

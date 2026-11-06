@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <limits>
 
@@ -24,6 +25,25 @@ inline bool enabled() {
 #endif
 }
 #if LOGITLAB_HAS_AVX2
+LOGITLAB_AVX2 inline bool copy_indices32(const std::int32_t* source, std::size_t* output,
+                                         std::size_t size) {
+  std::size_t j = 0;
+  for (; j + 7 < size; j += 8) {
+    const auto packet = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(source + j));
+    // A sign bit in any lane denotes a negative index. Widen four lanes at a
+    // time into the owned 64-bit size_t storage; never narrow a valid index.
+    if (_mm256_movemask_ps(_mm256_castsi256_ps(packet))) return false;
+    const auto low = _mm256_cvtepi32_epi64(_mm256_castsi256_si128(packet));
+    const auto high = _mm256_cvtepi32_epi64(_mm256_extracti128_si256(packet, 1));
+    _mm256_storeu_si256(reinterpret_cast<__m256i*>(output + j), low);
+    _mm256_storeu_si256(reinterpret_cast<__m256i*>(output + j + 4), high);
+  }
+  for (; j < size; ++j) {
+    if (source[j] < 0) return false;
+    output[j] = static_cast<std::size_t>(source[j]);
+  }
+  return true;
+}
 LOGITLAB_AVX2 inline bool all_finite(const double* values, std::size_t size) {
   const auto sign = _mm256_set1_pd(-0.0);
   const auto maximum = _mm256_set1_pd(std::numeric_limits<double>::max());
@@ -42,7 +62,9 @@ LOGITLAB_AVX2 inline double sum(__m256d value) {
   _mm256_store_pd(lanes, value);
   return (lanes[0] + lanes[1]) + (lanes[2] + lanes[3]);
 }
-inline bool opposing_product_overflows(const double* x, const double* y, std::size_t size) {
+__attribute__((noinline, cold)) inline bool opposing_product_overflows(const double* x,
+                                                                       const double* y,
+                                                                       std::size_t size) {
   bool positive = false, negative = false;
   for (std::size_t j = 0; j < size; ++j) {
     const double product = x[j] * y[j];
@@ -65,7 +87,7 @@ LOGITLAB_AVX2 inline double dense_dot(const double* x, const double* y, std::siz
   // Clang may fuse a tail multiply/add: fma(-2, DBL_MAX, +Inf) stays
   // infinite where separate overflowing products cancel to NaN. Preserve
   // rejection of that undefined score; ordinary finite dots skip this scan.
-  if (std::isinf(result) && opposing_product_overflows(x, y, size))
+  if (__builtin_expect(std::isinf(result), 0) && opposing_product_overflows(x, y, size))
     return std::numeric_limits<double>::quiet_NaN();
   return result;
 }
