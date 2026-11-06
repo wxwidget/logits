@@ -36,13 +36,17 @@ jobs:
   cpp:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         compiler: ['g++', 'clang++']
     steps:
       - uses: actions/checkout@v4
       - run: cmake -S . -B build/ci -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} -DLOGITLAB_LEGACY=ON
       - run: cmake --build build/ci --parallel 2
-      - run: ctest --test-dir build/ci --output-on-failure
+      - run: ctest --test-dir build/ci --output-on-failure --output-junit "$PWD/build/ci/ctest.xml"
+      - name: Report native test failures
+        if: failure()
+        run: python3 tools/report_ctest.py build/ci/ctest.xml
       - run: ./build/ci/legacy_lr data/train.csv data/trainLabels.csv 1000 40
   sanitizers:
     runs-on: ubuntu-latest
