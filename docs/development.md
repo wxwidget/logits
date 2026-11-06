@@ -70,8 +70,8 @@ Run standalone C++ tests/examples under sanitizers. Historical executables are n
 
 ```bash
 python -m build --sdist
-python -m pip wheel --no-deps dist/logitlab-0.4.0.tar.gz -w dist
-python -m pip install --force-reinstall --no-deps dist/logitlab-0.4.0-*.whl
+python -m pip wheel --no-deps dist/logitlab-0.4.1.tar.gz -w dist
+python -m pip install --force-reinstall --no-deps dist/logitlab-0.4.1-*.whl
 python -m pytest -q
 ```
 
@@ -86,3 +86,16 @@ cmake --build build/legacy --parallel 2
 ```
 
 The historical LR/FTRL/L-BFGS programs use Abseil and retain their original conventions. They do not share the modern research objective. The bundled `lib/liblbfgs.a` is platform-specific and needs non-PIE linking on the verified Linux x86_64 setup. Old Python2/pytron experiments are archived and unsupported by this workflow.
+
+## Quality gates and performance refactoring
+
+```bash
+python -m pip install '.[test,benchmark,quality]'
+python tools/check_quality.py
+ruff format --check python/logitlab benchmarks/refactor.py benchmarks/refactor_report.py tools/check_quality.py tests/test_refactor.py
+ruff check --select F821,F823 python/logitlab benchmarks/refactor.py benchmarks/refactor_report.py tools/check_quality.py tests/test_refactor.py
+```
+
+The gate caps each modern C++/binding and Python runtime function at cyclomatic complexity 15. Lizard, Radon and Ruff versions are pinned in the optional `quality` extra. Historical experiments and generated research reports are identified separately from the maintained runtime. See [the refactoring design and acceptance protocol](refactoring.md).
+
+`LOGITLAB_SIMD=ON` adds runtime-dispatched AVX2/FMA kernels while retaining a portable fallback. `LOGITLAB_VECTOR_MATH=ON` detects the optional system glibc `libmvec` exp/log1p ABI; absent symbols disable that backend. No fast-math flags are enabled. Build with `-DLOGITLAB_SIMD=OFF` to omit both accelerators, or set `LOGITLAB_DISABLE_SIMD=1` before importing the Python extension to exercise its compiled portable path. These capabilities do not introduce extra worker threads.

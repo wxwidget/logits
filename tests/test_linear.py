@@ -32,7 +32,12 @@ def test_least_squares_and_ridge_reference(data, solver, l2, csr):
     reference_r2 = 1 - np.sum((y - A @ reference)**2) / np.sum((y - y.mean())**2)
     assert model.score(X, y) == pytest.approx(reference_r2, abs=1e-9)
     assert model.history_[-1]["stationarity_norm"] <= 1e-9
-    assert model.work_["full_evaluations"] >= len(model.history_)
+    assert model.work_["full_evaluations"] >= 2  # Initial and final full residuals.
+    # Recurrences may avoid intermediate scans, but cannot certify convergence
+    # with a drifting recursive residual. Check the actual normal equations.
+    residual = model.predict(X) - y
+    gradient = np.r_[X.T @ residual / len(y) + l2 * model.coef_, residual.mean()]
+    assert np.linalg.norm(gradient) <= 1.0001e-9
 
 
 @pytest.mark.parametrize("solver", ["auto", "cg", "proximal-gd", "fista"])

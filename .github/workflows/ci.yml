@@ -13,8 +13,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      - run: python -m pip install '.[test,benchmark]'
+      - run: python -m pip install '.[test,benchmark,quality]'
+      - run: python tools/check_quality.py --output build/quality.json
+      - run: ruff format --check python/logitlab benchmarks/refactor.py benchmarks/refactor_report.py tools/check_quality.py tests/test_refactor.py
+      - run: ruff check --select F821,F823 python/logitlab benchmarks/refactor.py benchmarks/refactor_report.py tools/check_quality.py tests/test_refactor.py
       - run: python -m pytest -q --cov=logitlab --cov-report=term-missing --cov-fail-under=95
+      - run: LOGITLAB_DISABLE_SIMD=1 python -m pytest -q tests/test_glm.py tests/test_linear.py tests/test_refactor.py
       - run: python examples/train.py
       - run: python examples/linear_regression.py
       - run: python examples/generalized_linear_model.py

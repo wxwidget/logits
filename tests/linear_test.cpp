@@ -46,7 +46,10 @@ int main() {
       auto model = fit_linear(d, o, weights);
       check(model.converged, "linear fit did not converge");
       check(model.history.back().stationarity_norm <= o.tolerance, "invalid stop");
-      check(model.work.full_evaluations >= model.history.size(), "missing work");
+      check(model.work.full_evaluations >= 2, "initial/final gradient not verified");
+      const auto passes = model.work.full_evaluations + model.work.hessian_vector_products +
+                          (model.solver == "cg" ? 1 : 0);
+      check(model.work.row_visits == passes * d.rows, "incorrect linear work accounting");
       check(predict_linear(d, model).size() == d.rows, "prediction shape");
     }
     o.solver = "fista";

@@ -1,6 +1,7 @@
 #pragma once
+#include <string>
 
-#include "logitlab/logistic_regression.hpp"
+#include "logitlab/dataset.hpp"
 
 namespace logitlab {
 struct GLMOptions {

@@ -5,35 +5,23 @@
 #include <numeric>
 #include <stdexcept>
 
+#include "detail/families.hpp"
+#include "detail/glm_api.hpp"
+#include "detail/kernels.hpp"
+#include "detail/validation.hpp"
+#include "detail/weights.hpp"
 #include "logitlab/generalized_linear_model.hpp"
 
 namespace logitlab {
 namespace {
-void require(bool condition, const char* message) {
-  if (!condition) throw std::invalid_argument(message);
-}
-enum class Family { gaussian, binomial, poisson };
-Family family(const std::string& name) {
-  if (name == "gaussian") return Family::gaussian;
-  if (name == "binomial") return Family::binomial;
-  if (name == "poisson") return Family::poisson;
-  throw std::invalid_argument("family must be gaussian, binomial or poisson");
-}
-std::string link(Family f) {
-  return f == Family::gaussian ? "identity" : f == Family::binomial ? "logit" : "log";
-}
-double dot(absl::Span<const double> a, absl::Span<const double> b) {
-  return std::inner_product(a.begin(), a.end(), b.begin(), 0.);
-}
-double norm(absl::Span<const double> a) {
-  double result = 0;
-  for (double value : a) result = std::hypot(result, value);
-  return result;
-}
-bool finite(absl::Span<const double> a) {
-  return std::all_of(a.begin(), a.end(), [](double value) { return std::isfinite(value); });
-}
-double softplus(double eta) { return std::max(eta, 0.) + std::log1p(std::exp(-std::abs(eta))); }
+using detail::dot;
+using detail::Family;
+using detail::family;
+using detail::finite;
+using detail::link;
+using detail::norm;
+using detail::require;
+using detail::softplus;
 void validate_offset(absl::Span<const double> offset, std::size_t rows) {
   require(offset.empty() || (offset.size() == rows && finite(offset)),
           "offset must be finite with one value per row");
@@ -43,34 +31,25 @@ struct Problem {
   GLMOptions options;
   Family distribution;
   absl::Span<const double> offset;
-  std::vector<double> q;
+  detail::ObservationWeights q;
   Problem(const Dataset& d, GLMOptions o, absl::Span<const double> weights,
-          absl::Span<const double> offsets)
-      : data(d), options(std::move(o)), distribution(family(options.family)), offset(offsets) {
-    d.validate(true, false);
+          absl::Span<const double> offsets, bool known_storage = false)
+      : data(detail::checked_data(d, false, known_storage)),
+        options(std::move(o)),
+        distribution(family(options.family)),
+        offset(offsets),
+        q(d.rows, weights) {
     require(options.link == "auto" || options.link == link(distribution),
             "unsupported family/link pair; canonical links only");
     require(options.max_iter > 0 && options.max_cg_iter > 0 && std::isfinite(options.l2) &&
                 options.l2 >= 0 && std::isfinite(options.tolerance) && options.tolerance > 0,
             "invalid GLM optimization options");
     validate_offset(offset, d.rows);
-    require(weights.empty() || weights.size() == d.rows, "invalid sample weight shape");
-    q.assign(d.rows, 1.);
-    if (!weights.empty()) {
-      require(finite(weights) && std::all_of(weights.begin(), weights.end(),
-                                             [](double value) { return value >= 0; }),
-              "sample weights must be finite and nonnegative");
-      const double maximum = *std::max_element(weights.begin(), weights.end());
-      require(maximum > 0, "sample weights must have positive mass");
-      for (std::size_t i = 0; i < d.rows; ++i) q[i] = weights[i] / maximum;
-    }
-    const double mass = std::accumulate(q.begin(), q.end(), 0.);
-    for (std::size_t i = 0; i < d.rows; ++i) {
-      q[i] /= mass;
+    for (double response : d.labels) {
       if (distribution == Family::binomial)
-        require(d.labels[i] >= 0 && d.labels[i] <= 1, "binomial responses must be in [0,1]");
+        require(response >= 0 && response <= 1, "binomial responses must be in [0,1]");
       if (distribution == Family::poisson)
-        require(d.labels[i] >= 0, "poisson responses must be nonnegative");
+        require(response >= 0, "poisson responses must be nonnegative");
     }
   }
   double eta(std::size_t i, absl::Span<const double> theta) const {
@@ -84,46 +63,44 @@ struct Problem {
     diagonal.assign(theta.size(), 0.);
     curvature.assign(data.rows, 0.);
     double objective = 0;
+    const bool zero_features = detail::zero_coefficients(theta, data.cols);
     ++work.full_evaluations;
-    for (std::size_t i = 0; i < data.rows; ++i) {
-      ++work.row_visits;
-      if (q[i] == 0) continue;
-      const double z = eta(i, theta), y = data.labels[i];
-      if (!std::isfinite(z)) return INFINITY;
-      double loss, residual, variance;
-      if (distribution == Family::gaussian) {
-        residual = z - y;
-        loss = .5 * residual * residual;
-        variance = 1.;
-      } else if (distribution == Family::binomial) {
-        loss = y * softplus(-z) + (1 - y) * softplus(z);
-        residual = z >= 0 ? (1 - y) - sigmoid(-z) : sigmoid(z) - y;
-        const double t = std::exp(-std::abs(z));
-        variance = t / ((1 + t) * (1 + t));
-      } else {
-        const double mean = std::exp(z);
-        loss = mean - y * z;
-        residual = mean - y;
-        variance = mean;
-      }
-      objective += q[i] * loss;
-      const double r = q[i] * residual, h = q[i] * variance;
-      data.add(i, r, absl::MakeSpan(gradient).subspan(0, data.cols));
-      curvature[i] = h;
-      if (data.sparse()) {
-        for (std::size_t k = data.offsets[i]; k < data.offsets[i + 1]; ++k)
-          diagonal[data.indices[k]] += h * data.values[k] * data.values[k];
-      } else {
-        for (std::size_t j = 0; j < data.cols; ++j) {
-          const double x = data.values[i * data.cols + j];
-          diagonal[j] += h * x * x;
+    detail::with_family(distribution, [&](auto response) {
+      detail::with_rows(data, [&](const auto& rows) {
+        for (std::size_t begin = 0; begin < data.rows; begin += detail::kResponseBatch) {
+          const auto count = std::min(detail::kResponseBatch, data.rows - begin);
+          detail::ResponseBatch batch;
+          for (std::size_t lane = 0; lane < count; ++lane) {
+            const auto i = begin + lane;
+            ++work.row_visits;
+            batch.eta[lane] = 0;
+            batch.target[lane] = 0;
+            if (q[i] == 0) continue;
+            batch.eta[lane] = (zero_features ? 0. : rows[i].dot(theta)) + theta.back() +
+                              (offset.empty() ? 0. : offset[i]);
+            if (!std::isfinite(batch.eta[lane])) {
+              objective = INFINITY;
+              return;
+            }
+            batch.target[lane] = data.labels[i];
+          }
+          response.batch(batch, count);
+          for (std::size_t lane = 0; lane < count; ++lane) {
+            const auto i = begin + lane;
+            if (q[i] == 0) continue;
+            const auto& moment = batch.values[lane];
+            objective += q[i] * moment.loss;
+            const double r = q[i] * moment.residual, h = q[i] * moment.variance;
+            curvature[i] = h;
+            rows[i].add_moments(r, h, absl::MakeSpan(gradient), absl::MakeSpan(diagonal));
+            if (options.fit_intercept) {
+              gradient.back() += r;
+              diagonal.back() += h;
+            }
+          }
         }
-      }
-      if (options.fit_intercept) {
-        gradient.back() += r;
-        diagonal.back() += h;
-      }
-    }
+      });
+    });
     for (std::size_t j = 0; j < data.cols; ++j) {
       objective += .5 * options.l2 * theta[j] * theta[j];
       gradient[j] += options.l2 * theta[j];
@@ -133,15 +110,9 @@ struct Problem {
   }
   void hvp(absl::Span<const double> vector, absl::Span<const double> curvature,
            std::vector<double>& out, Work& work) const {
-    out.assign(vector.size(), 0.);
-    for (std::size_t i = 0; i < data.rows; ++i) {
-      if (curvature[i] == 0) continue;
-      const double value =
-          curvature[i] * (data.dot(i, vector.subspan(0, data.cols)) + vector.back());
-      data.add(i, value, absl::MakeSpan(out).subspan(0, data.cols));
-      if (options.fit_intercept) out.back() += value;
-    }
-    for (std::size_t j = 0; j < data.cols; ++j) out[j] += options.l2 * vector[j];
+    out.resize(vector.size());
+    detail::hessian_vector(data, curvature, vector, options.l2, options.fit_intercept,
+                           absl::MakeSpan(out));
     ++work.hessian_vector_products;
     work.row_visits += data.rows;
   }
@@ -168,24 +139,26 @@ struct Problem {
     else if (distribution == Family::binomial) {
       mean = std::clamp(mean, 1e-3, 1 - 1e-3);
       theta.back() = std::log(mean) - std::log1p(-mean) - average_offset;
-    } else {
-      double maximum_offset = -INFINITY, maximum_y = 0;
-      for (std::size_t i = 0; i < data.rows; ++i)
-        if (q[i] > 0) {
-          maximum_offset = std::max(maximum_offset, offset.empty() ? 0. : offset[i]);
-          maximum_y = std::max(maximum_y, data.labels[i]);
-        }
-      double response = 0, mass = 0;
-      for (std::size_t i = 0; i < data.rows; ++i)
-        if (q[i] > 0) {
-          mass += q[i] * std::exp((offset.empty() ? 0 : offset[i]) - maximum_offset);
-          if (maximum_y > 0) response += q[i] * (data.labels[i] / maximum_y);
-        }
-      const double log_mean =
-          maximum_y > 0 ? std::log(maximum_y) + std::log(response) : std::log(1e-3);
-      theta.back() = (log_mean - std::log(mass)) - maximum_offset;
-    }
+    } else
+      theta.back() = poisson_intercept();
     return theta;
+  }
+  double poisson_intercept() const {
+    double maximum_offset = -INFINITY, maximum_y = 0;
+    for (std::size_t i = 0; i < data.rows; ++i)
+      if (q[i] > 0) {
+        maximum_offset = std::max(maximum_offset, offset.empty() ? 0. : offset[i]);
+        maximum_y = std::max(maximum_y, data.labels[i]);
+      }
+    double response = 0, mass = 0;
+    for (std::size_t i = 0; i < data.rows; ++i)
+      if (q[i] > 0) {
+        mass += q[i] * std::exp((offset.empty() ? 0 : offset[i]) - maximum_offset);
+        if (maximum_y > 0) response += q[i] * (data.labels[i] / maximum_y);
+      }
+    const double log_mean =
+        maximum_y > 0 ? std::log(maximum_y) + std::log(response) : std::log(1e-3);
+    return (log_mean - std::log(mass)) - maximum_offset;
   }
 };
 std::vector<double> direction(const Problem& problem, absl::Span<const double> gradient,
@@ -199,7 +172,13 @@ std::vector<double> direction(const Problem& problem, absl::Span<const double> g
   }
   p = z;
   double rz = dot(residual, z);
-  const double stop = std::min(.5, std::sqrt(norm(gradient))) * norm(gradient);
+  const double gradient_norm = norm(gradient);
+  // Avoid oversolving the local linear model near the requested full-gradient
+  // tolerance. Only a fresh complete gradient can certify outer convergence.
+  const double floor = .5 * problem.options.tolerance;
+  const double stop = problem.distribution == Family::gaussian
+                          ? floor
+                          : std::max(floor, std::min(.5, std::sqrt(gradient_norm)) * gradient_norm);
   for (std::size_t k = 0; k < std::min(size, problem.options.max_cg_iter); ++k) {
     problem.hvp(p, curvature, hp, work);
     const double php = dot(p, hp);
@@ -220,8 +199,9 @@ std::vector<double> direction(const Problem& problem, absl::Span<const double> g
     for (std::size_t j = 0; j < size; ++j) result[j] = -gradient[j] / std::max(diagonal[j], 1e-12);
   return result;
 }
-void validate_model(const Dataset& data, const GLMResult& model, absl::Span<const double> offset) {
-  data.validate(false, false);
+void validate_model(const Dataset& data, const GLMResult& model, absl::Span<const double> offset,
+                    bool known_storage = false) {
+  if (!known_storage) data.validate(false, false);
   require(
       model.weights.size() == data.cols && finite(model.weights) && std::isfinite(model.intercept),
       "invalid GLM model or prediction feature count");
@@ -246,9 +226,32 @@ double glm_objective(const Dataset& data, absl::Span<const double> theta, const 
   return value;
 }
 
-GLMResult fit_glm(const Dataset& data, const GLMOptions& options, absl::Span<const double> weights,
-                  absl::Span<const double> offset) {
-  Problem problem(data, options, weights, offset);
+namespace {
+struct Trial {
+  std::vector<double> candidate, gradient, curvature, diagonal;
+  double loss = INFINITY;
+};
+bool backtrack(const Problem& problem, absl::Span<const double> theta,
+               absl::Span<const double> direction, double loss, double slope, Work& work,
+               Trial& trial) {
+  double step = 1.;
+  for (std::size_t attempt = 0; attempt < 60; ++attempt) {
+    for (std::size_t j = 0; j < theta.size(); ++j)
+      trial.candidate[j] = theta[j] + step * direction[j];
+    trial.loss =
+        problem.evaluate(trial.candidate, trial.gradient, trial.curvature, trial.diagonal, work);
+    if (finite(trial.candidate) && std::isfinite(trial.loss) && finite(trial.gradient) &&
+        finite(trial.diagonal) && trial.loss <= loss + 1e-4 * step * slope)
+      return true;
+    step *= .5;
+  }
+  return false;
+}
+}  // namespace
+
+GLMResult fit_impl(const Dataset& data, const GLMOptions& options, absl::Span<const double> weights,
+                   absl::Span<const double> offset, bool known_storage) {
+  Problem problem(data, options, weights, offset, known_storage);
   GLMResult result;
   result.family = options.family;
   result.link = link(problem.distribution);
@@ -265,6 +268,8 @@ GLMResult fit_glm(const Dataset& data, const GLMOptions& options, absl::Span<con
     result.history.push_back({iteration, loss, norm(gradient), seconds, result.work});
   };
   record(0);
+  Trial trial;
+  trial.candidate.resize(theta.size());
   for (std::size_t iteration = 1; iteration <= options.max_iter; ++iteration) {
     if (norm(gradient) <= options.tolerance) {
       result.converged = true;
@@ -276,30 +281,15 @@ GLMResult fit_glm(const Dataset& data, const GLMOptions& options, absl::Span<con
       result.status = "numerical_breakdown";
       break;
     }
-    std::vector<double> candidate(theta.size()), new_gradient, new_curvature, new_diagonal;
-    double step = 1., new_loss = INFINITY;
-    bool accepted = false;
-    for (std::size_t attempt = 0; attempt < 60; ++attempt) {
-      for (std::size_t j = 0; j < theta.size(); ++j)
-        candidate[j] = theta[j] + step * step_direction[j];
-      new_loss =
-          problem.evaluate(candidate, new_gradient, new_curvature, new_diagonal, result.work);
-      if (finite(candidate) && std::isfinite(new_loss) && finite(new_gradient) &&
-          finite(new_diagonal) && new_loss <= loss + 1e-4 * step * slope) {
-        accepted = true;
-        break;
-      }
-      step *= .5;
-    }
-    if (!accepted) {
+    if (!backtrack(problem, theta, step_direction, loss, slope, result.work, trial)) {
       result.status = "line_search_failed";
       break;
     }
-    theta.swap(candidate);
-    gradient.swap(new_gradient);
-    curvature.swap(new_curvature);
-    diagonal.swap(new_diagonal);
-    loss = new_loss;
+    theta.swap(trial.candidate);
+    gradient.swap(trial.gradient);
+    curvature.swap(trial.curvature);
+    diagonal.swap(trial.diagonal);
+    loss = trial.loss;
     ++result.work.parameter_updates;
     record(iteration);
   }
@@ -310,16 +300,16 @@ GLMResult fit_glm(const Dataset& data, const GLMOptions& options, absl::Span<con
   return result;
 }
 
-std::vector<double> predict_glm(const Dataset& data, const GLMResult& model,
-                                absl::Span<const double> offset, bool linear) {
-  validate_model(data, model, offset);
+std::vector<double> predict_impl(const Dataset& data, const GLMResult& model,
+                                 absl::Span<const double> offset, bool linear, bool known_storage) {
+  validate_model(data, model, offset, known_storage);
   const auto f = family(model.family);
   std::vector<double> prediction(data.rows);
   for (std::size_t i = 0; i < data.rows; ++i) {
     const double eta =
         data.dot(i, model.weights) + model.intercept + (offset.empty() ? 0 : offset[i]);
     const double mean = linear || f == Family::gaussian ? eta
-                        : f == Family::binomial         ? sigmoid(eta)
+                        : f == Family::binomial         ? detail::sigmoid(eta)
                                                         : std::exp(eta);
     if (!std::isfinite(eta) || !std::isfinite(mean))
       throw std::runtime_error("GLM prediction overflow");
@@ -334,7 +324,7 @@ double glm_deviance(const Dataset& data, const GLMResult& model, absl::Span<cons
   GLMOptions options;
   options.family = model.family;
   options.link = model.link;
-  Problem problem(data, options, weights, offset);
+  Problem problem(data, options, weights, offset, true);
   double deviance = 0;
   std::vector<double> theta = model.weights;
   theta.push_back(model.intercept);
@@ -345,7 +335,7 @@ double glm_deviance(const Dataset& data, const GLMResult& model, absl::Span<cons
     if (problem.distribution == Family::gaussian)
       unit = (y - eta) * (y - eta);
     else if (problem.distribution == Family::binomial) {
-      unit = y * softplus(-eta) + (1 - y) * softplus(eta);
+      unit = detail::Binomial{}(eta, y).loss;
       if (y > 0) unit += y * std::log(y);
       if (y < 1) unit += (1 - y) * std::log1p(-y);
       unit *= 2;
@@ -364,5 +354,22 @@ double glm_deviance(const Dataset& data, const GLMResult& model, absl::Span<cons
   }
   if (!std::isfinite(deviance)) throw std::runtime_error("GLM deviance overflow");
   return deviance;
+}
+GLMResult fit_glm(const Dataset& data, const GLMOptions& options, absl::Span<const double> weights,
+                  absl::Span<const double> offset) {
+  return fit_impl(data, options, weights, offset, false);
+}
+GLMResult detail::fit_glm_validated(const Dataset& data, const GLMOptions& options,
+                                    absl::Span<const double> weights,
+                                    absl::Span<const double> offset) {
+  return fit_impl(data, options, weights, offset, true);
+}
+std::vector<double> predict_glm(const Dataset& data, const GLMResult& model,
+                                absl::Span<const double> offset, bool linear) {
+  return predict_impl(data, model, offset, linear, false);
+}
+std::vector<double> detail::predict_glm_validated(const Dataset& data, const GLMResult& model,
+                                                  absl::Span<const double> offset, bool linear) {
+  return predict_impl(data, model, offset, linear, true);
 }
 }  // namespace logitlab

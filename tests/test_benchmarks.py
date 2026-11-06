@@ -82,7 +82,7 @@ def test_core_work_counters(solver):
     else:
         assert total["parameter_updates"] == 1
         assert total["batch_gradients"] == 0
-        extra = total["hessian_vector_products"] + (solver == "newton-cg")
+        extra = total["hessian_vector_products"]  # Joint evaluation already computed curvature.
         assert total["row_visits"] == (total["full_evaluations"] + extra) * len(y)
         assert (total["hessian_vector_products"] > 0) == (solver == "newton-cg")
 

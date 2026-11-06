@@ -1,0 +1,609 @@
+{
+  "scope": "Modern C++ core/public headers/bindings and Python runtime; historical code and research reports excluded",
+  "tools": {
+    "lizard": "1.25.0",
+    "radon": "6.0.1"
+  },
+  "budget": 99,
+  "cpp": [
+    {
+      "file": "src/glm.cpp",
+      "name": "logitlab::require",
+      "complexity": 2,
+      "lines": 3
+    },
+    {
+      "file": "src/glm.cpp",
+      "name": "logitlab::family",
+      "complexity": 4,
+      "lines": 6
+    },
+    {
+      "file": "src/glm.cpp",
+      "name": "logitlab::link",
+      "complexity": 3,
+      "lines": 3
+    },
+    {
+      "file": "src/glm.cpp",
+      "name": "logitlab::dot",
+      "complexity": 1,
+      "lines": 3
+    },
+    {
+      "file": "src/glm.cpp",
+      "name": "logitlab::norm",
+      "complexity": 2,
+      "lines": 5
+    },
+    {
+      "file": "src/glm.cpp",
+      "name": "logitlab::finite",
+      "complexity": 1,
+      "lines": 3
+    },
+    {
+      "file": "src/glm.cpp",
+      "name": "logitlab::softplus",
+      "complexity": 1,
+      "lines": 1
+    },
+    {
+      "file": "src/glm.cpp",
+      "name": "logitlab::validate_offset",
+      "complexity": 3,
+      "lines": 4
+    },
+    {
+      "file": "src/glm.cpp",
+      "name": "logitlab::Problem::Problem",
+      "complexity": 15,
+      "lines": 29
+    },
+    {
+      "file": "src/glm.cpp",
+      "name": "logitlab::Problem::eta",
+      "complexity": 2,
+      "lines": 4
+    },
+    {
+      "file": "src/glm.cpp",
+      "name": "logitlab::Problem::evaluate",
+      "complexity": 12,
+      "lines": 53
+    },
+    {
+      "file": "src/glm.cpp",
+      "name": "logitlab::Problem::hvp",
+      "complexity": 5,
+      "lines": 14
+    },
+    {
+      "file": "src/glm.cpp",
+      "name": "logitlab::Problem::initial",
+      "complexity": 18,
+      "lines": 42
+    },
+    {
+      "file": "src/glm.cpp",
+      "name": "logitlab::direction",
+      "complexity": 14,
+      "lines": 32
+    },
+    {
+      "file": "src/glm.cpp",
+      "name": "logitlab::validate_model",
+      "complexity": 3,
+      "lines": 8
+    },
+    {
+      "file": "src/glm.cpp",
+      "name": "logitlab::glm_objective",
+      "complexity": 6,
+      "lines": 15
+    },
+    {
+      "file": "src/glm.cpp",
+      "name": "logitlab::fit_glm",
+      "complexity": 18,
+      "lines": 63
+    },
+    {
+      "file": "src/glm.cpp",
+      "name": "logitlab::predict_glm",
+      "complexity": 8,
+      "lines": 17
+    },
+    {
+      "file": "src/glm.cpp",
+      "name": "logitlab::glm_deviance",
+      "complexity": 12,
+      "lines": 37
+    },
+    {
+      "file": "src/linear.cpp",
+      "name": "logitlab::require",
+      "complexity": 2,
+      "lines": 3
+    },
+    {
+      "file": "src/linear.cpp",
+      "name": "logitlab::dot",
+      "complexity": 1,
+      "lines": 3
+    },
+    {
+      "file": "src/linear.cpp",
+      "name": "logitlab::norm",
+      "complexity": 1,
+      "lines": 1
+    },
+    {
+      "file": "src/linear.cpp",
+      "name": "logitlab::Problem::Problem",
+      "complexity": 37,
+      "lines": 49
+    },
+    {
+      "file": "src/linear.cpp",
+      "name": "logitlab::Problem::weight",
+      "complexity": 2,
+      "lines": 3
+    },
+    {
+      "file": "src/linear.cpp",
+      "name": "logitlab::Problem::clamp",
+      "complexity": 1,
+      "lines": 3
+    },
+    {
+      "file": "src/linear.cpp",
+      "name": "logitlab::Problem::prox",
+      "complexity": 2,
+      "lines": 4
+    },
+    {
+      "file": "src/linear.cpp",
+      "name": "logitlab::Problem::penalty",
+      "complexity": 2,
+      "lines": 5
+    },
+    {
+      "file": "src/linear.cpp",
+      "name": "logitlab::Problem::evaluate",
+      "complexity": 5,
+      "lines": 16
+    },
+    {
+      "file": "src/linear.cpp",
+      "name": "logitlab::Problem::stationarity",
+      "complexity": 4,
+      "lines": 9
+    },
+    {
+      "file": "src/linear.cpp",
+      "name": "logitlab::linear_objective",
+      "complexity": 5,
+      "lines": 9
+    },
+    {
+      "file": "src/linear.cpp",
+      "name": "logitlab::fit_linear",
+      "complexity": 53,
+      "lines": 156
+    },
+    {
+      "file": "src/linear.cpp",
+      "name": "logitlab::predict_linear",
+      "complexity": 4,
+      "lines": 12
+    },
+    {
+      "file": "src/logistic.cpp",
+      "name": "logitlab::inner",
+      "complexity": 1,
+      "lines": 3
+    },
+    {
+      "file": "src/logistic.cpp",
+      "name": "logitlab::norm",
+      "complexity": 1,
+      "lines": 1
+    },
+    {
+      "file": "src/logistic.cpp",
+      "name": "logitlab::require",
+      "complexity": 2,
+      "lines": 3
+    },
+    {
+      "file": "src/logistic.cpp",
+      "name": "logitlab::Dataset::validate",
+      "complexity": 15,
+      "lines": 30
+    },
+    {
+      "file": "src/logistic.cpp",
+      "name": "logitlab::Dataset::dot",
+      "complexity": 4,
+      "lines": 8
+    },
+    {
+      "file": "src/logistic.cpp",
+      "name": "logitlab::Dataset::add",
+      "complexity": 4,
+      "lines": 6
+    },
+    {
+      "file": "src/logistic.cpp",
+      "name": "logitlab::sigmoid",
+      "complexity": 2,
+      "lines": 5
+    },
+    {
+      "file": "src/logistic.cpp",
+      "name": "logitlab::objective_unchecked",
+      "complexity": 7,
+      "lines": 21
+    },
+    {
+      "file": "src/logistic.cpp",
+      "name": "logitlab::objective",
+      "complexity": 4,
+      "lines": 8
+    },
+    {
+      "file": "src/logistic.cpp",
+      "name": "logitlab::fit",
+      "complexity": 66,
+      "lines": 176
+    },
+    {
+      "file": "src/logistic.cpp",
+      "name": "logitlab::predict",
+      "complexity": 4,
+      "lines": 13
+    },
+    {
+      "file": "include/logitlab/logistic_regression.hpp",
+      "name": "logitlab::Dataset::sparse",
+      "complexity": 1,
+      "lines": 1
+    },
+    {
+      "file": "bindings/python.cpp",
+      "name": "dense",
+      "complexity": 6,
+      "lines": 14
+    },
+    {
+      "file": "bindings/python.cpp",
+      "name": "csr",
+      "complexity": 13,
+      "lines": 29
+    },
+    {
+      "file": "bindings/python.cpp",
+      "name": "PYBIND11_MODULE",
+      "complexity": 1,
+      "lines": 162
+    }
+  ],
+  "python": [
+    {
+      "file": "python/logitlab/__init__.py",
+      "name": "_work",
+      "complexity": 2,
+      "lines": 4
+    },
+    {
+      "file": "python/logitlab/__init__.py",
+      "name": "_dataset",
+      "complexity": 3,
+      "lines": 12
+    },
+    {
+      "file": "python/logitlab/__init__.py",
+      "name": "LogisticRegression.__init__",
+      "complexity": 3,
+      "lines": 7
+    },
+    {
+      "file": "python/logitlab/__init__.py",
+      "name": "LogisticRegression.fit",
+      "complexity": 2,
+      "lines": 13
+    },
+    {
+      "file": "python/logitlab/__init__.py",
+      "name": "LogisticRegression.predict_proba",
+      "complexity": 2,
+      "lines": 5
+    },
+    {
+      "file": "python/logitlab/__init__.py",
+      "name": "LogisticRegression.predict",
+      "complexity": 1,
+      "lines": 2
+    },
+    {
+      "file": "python/logitlab/__init__.py",
+      "name": "__init__",
+      "complexity": 3,
+      "lines": 7
+    },
+    {
+      "file": "python/logitlab/__init__.py",
+      "name": "fit",
+      "complexity": 2,
+      "lines": 13
+    },
+    {
+      "file": "python/logitlab/__init__.py",
+      "name": "predict_proba",
+      "complexity": 2,
+      "lines": 5
+    },
+    {
+      "file": "python/logitlab/__init__.py",
+      "name": "predict",
+      "complexity": 1,
+      "lines": 2
+    },
+    {
+      "file": "python/logitlab/analysis.py",
+      "name": "_targets",
+      "complexity": 4,
+      "lines": 5
+    },
+    {
+      "file": "python/logitlab/analysis.py",
+      "name": "_weights",
+      "complexity": 6,
+      "lines": 8
+    },
+    {
+      "file": "python/logitlab/analysis.py",
+      "name": "regression_metrics",
+      "complexity": 7,
+      "lines": 24
+    },
+    {
+      "file": "python/logitlab/analysis.py",
+      "name": "ols_summary",
+      "complexity": 27,
+      "lines": 77
+    },
+    {
+      "file": "python/logitlab/glm.py",
+      "name": "_offset",
+      "complexity": 12,
+      "lines": 16
+    },
+    {
+      "file": "python/logitlab/glm.py",
+      "name": "GeneralizedLinearModel.__init__",
+      "complexity": 2,
+      "lines": 5
+    },
+    {
+      "file": "python/logitlab/glm.py",
+      "name": "GeneralizedLinearModel.fit",
+      "complexity": 3,
+      "lines": 19
+    },
+    {
+      "file": "python/logitlab/glm.py",
+      "name": "GeneralizedLinearModel._check_fitted",
+      "complexity": 2,
+      "lines": 3
+    },
+    {
+      "file": "python/logitlab/glm.py",
+      "name": "GeneralizedLinearModel._predict",
+      "complexity": 2,
+      "lines": 5
+    },
+    {
+      "file": "python/logitlab/glm.py",
+      "name": "GeneralizedLinearModel.predict",
+      "complexity": 1,
+      "lines": 3
+    },
+    {
+      "file": "python/logitlab/glm.py",
+      "name": "GeneralizedLinearModel.decision_function",
+      "complexity": 1,
+      "lines": 3
+    },
+    {
+      "file": "python/logitlab/glm.py",
+      "name": "GeneralizedLinearModel.predict_proba",
+      "complexity": 2,
+      "lines": 6
+    },
+    {
+      "file": "python/logitlab/glm.py",
+      "name": "GeneralizedLinearModel.deviance",
+      "complexity": 2,
+      "lines": 7
+    },
+    {
+      "file": "python/logitlab/glm.py",
+      "name": "__init__",
+      "complexity": 2,
+      "lines": 5
+    },
+    {
+      "file": "python/logitlab/glm.py",
+      "name": "fit",
+      "complexity": 3,
+      "lines": 19
+    },
+    {
+      "file": "python/logitlab/glm.py",
+      "name": "_check_fitted",
+      "complexity": 2,
+      "lines": 3
+    },
+    {
+      "file": "python/logitlab/glm.py",
+      "name": "_predict",
+      "complexity": 2,
+      "lines": 5
+    },
+    {
+      "file": "python/logitlab/glm.py",
+      "name": "predict",
+      "complexity": 1,
+      "lines": 3
+    },
+    {
+      "file": "python/logitlab/glm.py",
+      "name": "decision_function",
+      "complexity": 1,
+      "lines": 3
+    },
+    {
+      "file": "python/logitlab/glm.py",
+      "name": "predict_proba",
+      "complexity": 2,
+      "lines": 6
+    },
+    {
+      "file": "python/logitlab/glm.py",
+      "name": "deviance",
+      "complexity": 2,
+      "lines": 7
+    },
+    {
+      "file": "python/logitlab/linear.py",
+      "name": "_endpoint",
+      "complexity": 4,
+      "lines": 9
+    },
+    {
+      "file": "python/logitlab/linear.py",
+      "name": "LinearRegression.__init__",
+      "complexity": 3,
+      "lines": 10
+    },
+    {
+      "file": "python/logitlab/linear.py",
+      "name": "LinearRegression.fit",
+      "complexity": 17,
+      "lines": 41
+    },
+    {
+      "file": "python/logitlab/linear.py",
+      "name": "LinearRegression.predict",
+      "complexity": 2,
+      "lines": 4
+    },
+    {
+      "file": "python/logitlab/linear.py",
+      "name": "LinearRegression.residuals",
+      "complexity": 2,
+      "lines": 6
+    },
+    {
+      "file": "python/logitlab/linear.py",
+      "name": "LinearRegression.evaluate",
+      "complexity": 1,
+      "lines": 2
+    },
+    {
+      "file": "python/logitlab/linear.py",
+      "name": "LinearRegression.score",
+      "complexity": 1,
+      "lines": 2
+    },
+    {
+      "file": "python/logitlab/linear.py",
+      "name": "LinearRegression.summary",
+      "complexity": 6,
+      "lines": 11
+    },
+    {
+      "file": "python/logitlab/linear.py",
+      "name": "__init__",
+      "complexity": 3,
+      "lines": 10
+    },
+    {
+      "file": "python/logitlab/linear.py",
+      "name": "fit",
+      "complexity": 17,
+      "lines": 41
+    },
+    {
+      "file": "python/logitlab/linear.py",
+      "name": "predict",
+      "complexity": 2,
+      "lines": 4
+    },
+    {
+      "file": "python/logitlab/linear.py",
+      "name": "residuals",
+      "complexity": 2,
+      "lines": 6
+    },
+    {
+      "file": "python/logitlab/linear.py",
+      "name": "evaluate",
+      "complexity": 1,
+      "lines": 2
+    },
+    {
+      "file": "python/logitlab/linear.py",
+      "name": "score",
+      "complexity": 1,
+      "lines": 2
+    },
+    {
+      "file": "python/logitlab/linear.py",
+      "name": "summary",
+      "complexity": 6,
+      "lines": 11
+    },
+    {
+      "file": "python/logitlab/linear.py",
+      "name": "Ridge.__init__",
+      "complexity": 1,
+      "lines": 2
+    },
+    {
+      "file": "python/logitlab/linear.py",
+      "name": "__init__",
+      "complexity": 1,
+      "lines": 2
+    },
+    {
+      "file": "python/logitlab/linear.py",
+      "name": "Lasso.__init__",
+      "complexity": 1,
+      "lines": 2
+    },
+    {
+      "file": "python/logitlab/linear.py",
+      "name": "__init__",
+      "complexity": 1,
+      "lines": 2
+    },
+    {
+      "file": "python/logitlab/linear.py",
+      "name": "ElasticNet.__init__",
+      "complexity": 3,
+      "lines": 4
+    },
+    {
+      "file": "python/logitlab/linear.py",
+      "name": "__init__",
+      "complexity": 3,
+      "lines": 4
+    }
+  ],
+  "max_cpp": 66,
+  "max_python": 27,
+  "violations": []
+}

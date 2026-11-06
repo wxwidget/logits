@@ -85,11 +85,13 @@ Fitted inspection attributes: `coef_`, `intercept_`, `family_`, `link_`, `n_feat
 
 Canonical links have gradient `Xᵀ(q*(μ−y)) + λw` and Hessian `Xᵀdiag(q*V(μ))X + diag(λ,...,λ,0)` with an intercept column when enabled. The implementation uses **Newton-CG with Jacobi preconditioning** and an Armijo backtracking line search. This is the canonical IRLS/Fisher-scoring Newton system, solved without forming its weighted design or Hessian. Inner CG runs at most `min(p+1, max_cg_iter)` steps and uses an adaptive residual target. A diagonal gradient direction is a fallback when curvature fails to produce a finite descent direction.
 
-Each evaluation computes loss, gradient, row curvature and preconditioner in one data pass. Curvature is reused for the inner Hessian-vector products. Input storage is O(np) dense or O(nnz+n) CSR; additional working storage is O(n+p), plus O(T) history. Kernels are single-threaded and in-memory. The implementation has no new C++ library dependency and retains Abseil as its foundation. It does not silently scale input features; fit scaling on training data only.
+Each evaluation computes loss, gradient, row curvature and preconditioner in one logical data pass. Four observations are processed together for optional vector-math calls; zero-weight rows remain masked before feature arithmetic. Curvature is reused for the inner Hessian-vector products. Input storage is O(np) dense or O(nnz+n) CSR; additional working storage is O(n+p), plus O(T) history. Kernels are single-threaded and in-memory. Abseil remains the foundation. Release 0.4.1 optionally detects the system glibc vector-math ABI for batched double-precision exp/log1p; it uses standard scalar math when that ABI or CPU support is absent. The runtime does not use fast-math flags. Vector and scalar library results may differ in rounding; independent solution/stationarity tolerances remain unchanged. It does not silently scale input features; fit scaling on training data only.
 
 Poisson initialization uses a weighted log-sum-exp of offsets so even a constant offset of 1000 can be compensated by an intercept without evaluating `exp(1000)`. Zero-weight rows are skipped before dot products, exponentials and curvature arithmetic. Non-finite trial steps are rejected and backtracked; η is not clipped to an arbitrary range. Non-finite initialization or prediction raises an error requesting input scaling rather than returning NaN/Inf. Very small Poisson means may underflow to zero on prediction; the loss/deviance still uses finite η directly where representable.
 
 Stopping checks the full penalized gradient L2 norm against `tolerance`. Statuses distinguish `converged`, `max_iter`, `line_search_failed` and `numerical_breakdown`; the latter three return the last finite accepted iterate. Histories include the initial iterate (iteration 0). Work records full evaluations including rejected trials, Hessian-vector products, row visits and accepted parameter updates. A partial evaluation ending at a non-finite η counts only visited rows. Failed line-search work may exceed the final history entry's counters.
+
+Inner residual targets use `max(0.5*tolerance, min(0.5, sqrt(gradient_norm))*gradient_norm)` for nonlinear families; Gaussian uses `0.5*tolerance` directly. This target controls work on the local Newton system, while final convergence always requires a newly evaluated full gradient at the requested `tolerance`.
 
 ## Deviance and limitations
 
@@ -118,7 +120,7 @@ python -m pytest -q tests/test_glm.py
 ctest --test-dir build/release --output-on-failure
 ```
 
-These are correctness checks, not a claim that Newton-CG is universally fastest. The existing benchmark reports predate this GLM solver and do not measure Poisson throughput.
+These are correctness checks, not a claim that Newton-CG is universally fastest. The [0.4.1 refactoring report](../benchmarks/reports/2026-11-06-refactor/refactor.en.md) compares Gaussian, Binomial and Poisson throughput against 0.4.0 at matched final accuracy. Earlier logistic/linear studies predate this GLM solver.
 
 ## 中文速读
 

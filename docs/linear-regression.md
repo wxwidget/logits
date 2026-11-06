@@ -136,3 +136,7 @@ auto prediction = logitlab::predict_linear(data, result);
 Link logitlab::core. Dataset labels are finite real values at linear entry points; logistic entry points still require 0/1. linear_objective takes p+1 feasible parameters and returns the penalized objective plus the **smooth-part** gradient. Optional sample weights must be empty or match row count. It validates shapes, options and feasibility before kernels. The output gradient must not alias parameters.
 
 The [Python example](../examples/linear_regression.py) and [C++ example](../examples/linear.cpp) are exercised by tests/CI. See the [TDD record](tdd-linear-regression.md) and [benchmark protocol](benchmarking.md).
+
+## Quadratic work reuse (0.4.1)
+
+CG updates the affine gradient and quadratic objective recursively, refreshing the full residual every 20 steps, at the iteration budget, and before certifying convergence. The final accepted result is checked with a full objective/gradient evaluation. FISTA extrapolates the affine gradient along with parameters, refreshes it periodically, and resets it on monotone restarts. Accepted proximal candidates still receive full evaluations. `full_evaluations` therefore counts actual traversals rather than one artificial evaluation per history row. Independent normal-equation tests and the paired benchmark verify the original precision requirements.

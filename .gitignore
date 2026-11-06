@@ -10,3 +10,4 @@ __pycache__/
 /coverage.xml
 /htmlcov/
 /data/kaggle/
+/.ruff_cache/

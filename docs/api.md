@@ -33,7 +33,7 @@ The wrapper owns a copy of float64 feature storage. Training and prediction rele
 | `seed` | `42` | Nonnegative 64-bit shuffle seed |
 | `fit_intercept` | `True` | Train an unpenalized intercept; otherwise it is zero |
 
-Batch size and history size must be positive even for solvers that do not use them. A batch size larger than the data uses a full batch. Adam uses beta1=0.9, beta2=0.999, epsilon=1e-8; stochastic methods use a constant step size. Newton-CG caps each inner solve at `min(p+1, 50)` iterations and damps its direction system by `1e-10`; the reported objective is unchanged.
+Batch size and history size must be positive even for solvers that do not use them. A batch size larger than the data uses a full batch. Adam uses beta1=0.9, beta2=0.999, epsilon=1e-8; stochastic methods use a constant step size. Newton-CG caps each inner solve at `min(p+1, 50)` iterations and damps its direction system by `1e-10`; the reported objective is unchanged. Inner relative residual accuracy adapts to `min(0.5, sqrt(full_gradient_norm))`, with an absolute residual floor of `0.5*tolerance` to avoid oversolving the local model. Full-gradient stopping still uses the requested `tolerance`. Curvature is retained from the joint objective/gradient evaluation, avoiding a separate curvature traversal.
 
 ## Fitted attributes
 
@@ -46,7 +46,7 @@ Batch size and history size must be positive even for solvers that do not use th
 
 History adds a full data pass after every stochastic epoch. Timing starts after C++ input validation and optimizer workspace allocation; it excludes Python input conversion. Seed reproducibility is tested on the same toolchain; shuffle order can differ across standard-library implementations.
 
-A row visit is one objective/gradient, mini-batch, curvature or Hessian-vector traversal of a sample. Dividing by the training row count gives equivalent data passes. This is a work proxy, not FLOPs: Newton curvature rows only evaluate scores, other traversals also accumulate vectors, and dense parameter-vector operations are not counted in row visits. Parameter updates count accepted batch steps or stochastic mini-batch steps; a failed line search adds evaluations but no update.
+A row visit is one objective/gradient, mini-batch, curvature or Hessian-vector traversal of a sample. Dividing by the training row count gives equivalent data passes. This is a work proxy, not FLOPs: a joint evaluation now includes any cached curvature calculation without counting an extra pass, and dense parameter-vector operations are not counted in row visits. The pre-0.4.1 reports retain the counters of their original binaries. Parameter updates count accepted batch steps or stochastic mini-batch steps; a failed line search adds evaluations but no update.
 
 Invalid numeric values, shapes, labels, solver names or zero budgets raise `ValueError`. Negative integer arguments can also be rejected by pybind11 during conversion. Prediction before fitting, non-finite optimization progress and undefined prediction scores raise `RuntimeError`. Infinite prediction scores saturate to 0/1; undefined scores from floating-point cancellation are rejected. A finite dataset with extremely large values can still overflow arithmetic; scale features rather than accepting non-finite progress.
 

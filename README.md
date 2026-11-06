@@ -6,7 +6,7 @@
 
 LogitLab studies model regularization and optimization on shared dense/CSR kernels. Binary logistic regression has five optimizers; linear regression adds OLS/WLS, Ridge, Lasso, Elastic Net, explicit coefficient constraints and OLS analysis. Histories, numerical references and held-out benchmarks connect optimization progress with predictive quality.
 
-The repository is named **logits**; the Python package and C++ namespace are **logitlab**. Version **0.4.0** adds canonical generalized linear models to the existing linear regression and analysis. Kernels currently run on one CPU thread and training holds the dataset in memory.
+The repository is named **logits**; the Python package and C++ namespace are **logitlab**. Version **0.4.1** separates shared data/numerical kernels from model trainers and Python conversion, and adds runtime-dispatched CPU acceleration. Kernels run on one CPU thread and training holds the dataset in memory.
 
 ## Quick start
 
@@ -133,6 +133,12 @@ auto probabilities = logitlab::predict(data, model);
 Link the `logitlab::core` CMake target. The [complete C++ example](examples/train.cpp) is built and checked by CTest. Abseil provides span views and historical parsing/container utilities; Boost is no longer required. [Build flags, offline setup and cloud recovery →](docs/development.md)
 
 ## Reproducible experiments
+
+**Runtime refactoring:** [中文验收报告](benchmarks/reports/2026-11-06-refactor/refactor.zh-CN.md) · [English acceptance report](benchmarks/reports/2026-11-06-refactor/refactor.en.md). The paired study compares the preserved 0.4.0 binary with 0.4.1 across **18 converged dense/CSR workloads**, plus four separate SGD/Adam workloads. It measures complete Python-facing fits, checks objective/stationarity and predictive quality independently, and retains all cases, source/build hashes and uncertainty. The declared 2× gate is the geometric mean across the 18 primary workloads; consult the measured report for its outcome and individual results.
+
+The recorded Xeon 8573C run achieved **2.0646× geometric-mean full-fit speedup**, with individual primary workloads ranging from **1.21× to 3.87×**, at matched final accuracy. This passes the declared average 2× gate on that machine; optional backends and different data/hardware require remeasurement.
+
+Maximum function complexity fell from **66 to 15 in C++** and **27 to 14 in Python**. CI enforces a per-function budget of 15. [Responsibilities, numerical contracts and exact reproduction commands →](docs/refactoring.md)
 
 **Kaggle real-data workflow:** [中文指南](docs/kaggle-benchmark.zh-CN.md) · [English guide](docs/kaggle-benchmark.md). Breast Cancer examines numerical scaling/correlation, Adult examines imbalanced one-hot CSR classification, and Insurance compares linear regularization. The downloader records observed versions/licenses and hashes; the runner produces bilingual quality/performance reports. **Actual Kaggle measurements are pending cloud network allowlist activation; the offline protocol has been tested.**
 

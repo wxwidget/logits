@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.1 — Runtime refactoring (2026-11-06)
+
+- Separate shared Dataset/Work contracts, storage/numeric kernels, response families, model trainers and per-model Python bindings; remove estimator imports through the Python facade.
+- Enforce a maximum function complexity of 15 for the modern C++/binding and Python runtime in CI, with pinned audit/format tools.
+- Add runtime-dispatched AVX2/FMA, optional detected system vector math and improved canonical CSR reductions, with a tested scalar fallback and unchanged final accuracy requirements.
+- Reuse accepted curvature, quadratic/affine recurrences and owned-data validation; avoid redundant CSR index and Python metadata conversions.
+- Add a paired 18-workload converged-fit acceptance benchmark plus a separate four-workload stochastic track, independent numerical checks and bilingual reports with raw/source/build hashes. See the linked reports for measured results and hardware limits.
+
+## 0.4.0 — Canonical generalized linear models
+
+- C++ Gaussian/identity, Binomial/logit and Poisson/log with matrix-free Newton-CG, dense/CSR input, normalized weights, offsets and mean deviance.
+- Python GLM estimator with conditional-mean prediction, Binomial probabilities and Poisson exposure support; independent numerical/edge tests and source/wheel validation.
+
 ## 0.3.0 — Linear regression and analysis (2026-10-16)
 
 - C++ OLS/WLS, Ridge, Lasso and Elastic Net with dense/CSR input, normalized sample weights and unpenalized intercept.
@@ -26,4 +39,4 @@
 - Cloud setup helper that locates its checkout and reuses retained dependencies without mandatory repeated network access.
 - Historical CSV traversal/array ownership/L-BFGS accumulation repairs and opt-in legacy executables.
 
-Kernels remain single-threaded and in-memory. Streaming/distributed training, multiclass models, sample weights and persistence are not implemented. Initial benchmark artifacts remain historical synthetic measurements.
+Kernels remain single-threaded and in-memory. Streaming/distributed training, multiclass models and persistence are not implemented. Initial benchmark artifacts remain historical synthetic measurements.

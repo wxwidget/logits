@@ -1,293 +1,294 @@
-#include <algorithm>
 #include <chrono>
-#include <cmath>
-#include <limits>
-#include <numeric>
 #include <random>
-#include <stdexcept>
-#include <utility>
 
+#include "detail/families.hpp"
+#include "detail/kernels.hpp"
+#include "detail/lbfgs.hpp"
+#include "detail/logistic_api.hpp"
+#include "detail/validation.hpp"
 #include "logitlab/logistic_regression.hpp"
 
 namespace logitlab {
+double sigmoid(double value) { return detail::sigmoid(value); }
 namespace {
-double inner(absl::Span<const double> a, absl::Span<const double> b) {
-  return std::inner_product(a.begin(), a.end(), b.begin(), 0.0);
-}
-double norm(absl::Span<const double> a) { return std::sqrt(inner(a, a)); }
-void require(bool b, const char* message) {
-  if (!b) throw std::invalid_argument(message);
-}
-}  // namespace
-void Dataset::validate(bool labels_required, bool binary_labels) const {
-  require(rows > 0 && cols > 0, "data must have positive dimensions");
-  require(rows < std::numeric_limits<std::size_t>::max(), "row count overflow");
-  require(cols < std::numeric_limits<std::size_t>::max(), "column count overflow");
-  if (sparse()) {
-    require(offsets.size() == rows + 1 && offsets.front() == 0 && offsets.back() == values.size(),
-            "invalid CSR offsets");
-    require(indices.size() == values.size(), "invalid CSR indices");
-    for (std::size_t i = 0; i < rows; ++i) {
-      require(offsets[i] <= offsets[i + 1] && offsets[i + 1] <= values.size(), "invalid CSR row");
-      for (auto k = offsets[i]; k < offsets[i + 1]; ++k) {
-        require(indices[k] < cols, "CSR index out of range");
-        require(k == offsets[i] || indices[k - 1] < indices[k],
-                "CSR indices must be sorted and unique");
-      }
-    }
-  } else {
-    require(indices.empty(), "dense data must not contain CSR indices");
-    require(rows <= std::numeric_limits<std::size_t>::max() / cols && values.size() == rows * cols,
-            "invalid dense shape");
-  }
-  for (double v : values) require(std::isfinite(v), "features must be finite");
-  if (labels_required) {
-    require(labels.size() == rows, "label count does not match rows");
-    for (double y : labels) {
-      require(std::isfinite(y), "targets must be finite");
-      if (binary_labels) require(y == 0 || y == 1, "labels must be 0 or 1");
-    }
-  }
-}
-double Dataset::dot(std::size_t row, absl::Span<const double> w) const {
-  double s = 0;
-  if (sparse())
-    for (auto k = offsets[row]; k < offsets[row + 1]; ++k) s += values[k] * w[indices[k]];
-  else
-    for (std::size_t j = 0; j < cols; ++j) s += values[row * cols + j] * w[j];
-  return s;
-}
-void Dataset::add(std::size_t row, double scale, absl::Span<double> g) const {
-  if (sparse())
-    for (auto k = offsets[row]; k < offsets[row + 1]; ++k) g[indices[k]] += scale * values[k];
-  else
-    for (std::size_t j = 0; j < cols; ++j) g[j] += scale * values[row * cols + j];
-}
-double sigmoid(double x) {
-  if (x >= 0) return 1 / (1 + std::exp(-x));
-  double e = std::exp(x);
-  return e / (1 + e);
-}
-namespace {
-double objective_unchecked(const Dataset& d, absl::Span<const double> w, const Options& o,
-                           absl::Span<double> g) {
-  require(w.size() == d.cols + 1 && g.size() == w.size(), "invalid parameter shape");
-  std::fill(g.begin(), g.end(), 0);
-  double f = 0;
-  for (std::size_t i = 0; i < d.rows; ++i) {
-    double z = d.dot(i, w) + (o.fit_intercept ? w[d.cols] : 0);
-    // Avoid inf-inf cancellation for large, correctly classified margins.
-    double margin = d.labels[i] == 1 ? -z : z;
-    f += std::max(margin, 0.0) + std::log1p(std::exp(-std::abs(margin)));
-    double residual = (sigmoid(z) - d.labels[i]) / d.rows;
-    d.add(i, residual, g);
-    if (o.fit_intercept) g[d.cols] += residual;
-  }
-  f /= d.rows;
-  for (std::size_t j = 0; j < d.cols; ++j) {
-    f += 0.5 * o.l2 * w[j] * w[j];
-    g[j] += o.l2 * w[j];
-  }
-  return f;
-}
-}  // namespace
+using detail::dot;
+using detail::norm;
+using detail::require;
 
-double objective(const Dataset& d, absl::Span<const double> w, const Options& o,
-                 absl::Span<double> g) {
-  d.validate();
-  require(std::isfinite(o.l2) && o.l2 >= 0, "l2 must be finite and nonnegative");
-  require(w.size() == d.cols + 1 && g.size() == w.size(), "invalid parameter shape");
-  for (double value : w) require(std::isfinite(value), "parameters must be finite");
-  return objective_unchecked(d, w, o, g);
-}
-
-Result fit(const Dataset& d, const Options& o) {
-  d.validate();
-  require(o.max_epochs > 0 && o.batch_size > 0 && o.history_size > 0,
+void validate_options(const Options& options) {
+  require(options.max_epochs > 0 && options.batch_size > 0 && options.history_size > 0,
           "iteration, batch and history sizes must be positive");
-  require(std::isfinite(o.learning_rate) && o.learning_rate > 0 && std::isfinite(o.l2) &&
-              o.l2 >= 0 && std::isfinite(o.tolerance) && o.tolerance > 0,
+  require(std::isfinite(options.learning_rate) && options.learning_rate > 0 &&
+              std::isfinite(options.l2) && options.l2 >= 0 && std::isfinite(options.tolerance) &&
+              options.tolerance > 0,
           "invalid optimization options");
-  require(o.solver == "gd" || o.solver == "sgd" || o.solver == "adam" || o.solver == "lbfgs" ||
-              o.solver == "newton-cg",
+  require(options.solver == "gd" || options.solver == "sgd" || options.solver == "adam" ||
+              options.solver == "lbfgs" || options.solver == "newton-cg",
           "unknown solver");
-  const auto n = d.cols + 1;
-  const bool stochastic = o.solver == "sgd" || o.solver == "adam";
-  const bool adaptive = o.solver == "adam";
-  std::vector<double> w(n, 0), g(n), direction(n), candidate(n), next_g(n);
-  std::vector<double> m(adaptive ? n : 0, 0), v(adaptive ? n : 0, 0);
-  std::vector<std::vector<double>> ss, ys;
-  std::vector<std::size_t> order(stochastic ? d.rows : 0);
-  std::iota(order.begin(), order.end(), 0);
-  std::mt19937_64 rng(o.seed);
-  std::size_t updates = 0;
-  auto start = std::chrono::steady_clock::now();
-  Result result;
-  result.status = "max_epochs";
-  auto evaluate = [&](absl::Span<const double> parameters, absl::Span<double> gradient) {
-    ++result.work.full_evaluations;
-    result.work.row_visits += d.rows;
-    return objective_unchecked(d, parameters, o, gradient);
-  };
-  double f = evaluate(w, absl::MakeSpan(g));
-  auto record = [&](std::size_t epoch) {
-    if (!std::isfinite(f) || !std::isfinite(norm(g)))
-      throw std::runtime_error("non-finite objective; scale features or reduce learning rate");
-    result.history.push_back(
-        {epoch, f, norm(g),
-         std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count(),
-         result.work});
-  };
-  record(0);
-  for (std::size_t epoch = 1; epoch <= o.max_epochs; ++epoch) {
-    if (norm(g) <= o.tolerance) {
-      result.converged = true;
-      result.status = "converged";
-      break;
+}
+
+double evaluate(const Dataset& data, absl::Span<const double> parameters, const Options& options,
+                absl::Span<double> gradient, absl::Span<double> curvature = {}) {
+  std::fill(gradient.begin(), gradient.end(), 0.);
+  double loss = 0;
+  const double inverse_rows = 1. / data.rows;
+  const bool zero_features = detail::zero_coefficients(parameters, data.cols);
+  detail::with_rows(data, [&](const auto& rows) {
+    for (std::size_t begin = 0; begin < data.rows; begin += detail::kResponseBatch) {
+      const auto count = std::min(detail::kResponseBatch, data.rows - begin);
+      detail::ResponseBatch batch;
+      for (std::size_t lane = 0; lane < count; ++lane) {
+        const auto i = begin + lane;
+        batch.eta[lane] = (zero_features ? 0. : rows[i].dot(parameters)) +
+                          (options.fit_intercept ? parameters.back() : 0.);
+        batch.target[lane] = data.labels[i];
+      }
+      detail::Binomial{}.batch(batch, count);
+      for (std::size_t lane = 0; lane < count; ++lane) {
+        const auto i = begin + lane;
+        const auto& moment = batch.values[lane];
+        loss += moment.loss;
+        if (!curvature.empty()) curvature[i] = moment.variance * inverse_rows;
+        const double residual = moment.residual * inverse_rows;
+        rows[i].add(residual, gradient);
+        if (options.fit_intercept) gradient.back() += residual;
+      }
     }
-    if (stochastic) {
-      std::shuffle(order.begin(), order.end(), rng);
-      for (std::size_t begin = 0; begin < d.rows;) {
-        auto count = std::min(o.batch_size, d.rows - begin);
-        ++result.work.batch_gradients;
-        ++result.work.parameter_updates;
-        result.work.row_visits += count;
-        std::fill(next_g.begin(), next_g.end(), 0);
-        for (std::size_t k = begin; k < begin + count; ++k) {
-          auto i = order[k];
-          double z = d.dot(i, w) + (o.fit_intercept ? w[d.cols] : 0);
-          double r = (sigmoid(z) - d.labels[i]) / count;
-          d.add(i, r, absl::MakeSpan(next_g));
-          if (o.fit_intercept) next_g[d.cols] += r;
-        }
-        ++updates;
-        const double correction1 = adaptive ? 1 - std::pow(0.9, updates) : 1;
-        const double correction2 = adaptive ? 1 - std::pow(0.999, updates) : 1;
-        for (std::size_t j = 0; j < n; ++j) {
-          double a = next_g[j] + (j < d.cols ? o.l2 * w[j] : 0);
-          if (o.solver == "adam") {
-            m[j] = 0.9 * m[j] + 0.1 * a;
-            v[j] = 0.999 * v[j] + 0.001 * a * a;
-            w[j] -= o.learning_rate * (m[j] / correction1) / (std::sqrt(v[j] / correction2) + 1e-8);
-          } else
-            w[j] -= o.learning_rate * a;
-        }
-        begin += count;
-      }
-      f = evaluate(w, absl::MakeSpan(g));
-    } else {
-      direction = g;
-      if (o.solver == "lbfgs" && !ss.empty()) {
-        std::vector<double> alpha(ss.size());
-        for (std::size_t k = ss.size(); k-- > 0;) {
-          alpha[k] = inner(ss[k], direction) / inner(ss[k], ys[k]);
-          for (std::size_t j = 0; j < n; ++j) direction[j] -= alpha[k] * ys[k][j];
-        }
-        double scale = inner(ss.back(), ys.back()) / inner(ys.back(), ys.back());
-        for (auto& x : direction) x *= scale;
-        for (std::size_t k = 0; k < ss.size(); ++k) {
-          double beta = inner(ys[k], direction) / inner(ss[k], ys[k]);
-          for (std::size_t j = 0; j < n; ++j) direction[j] += ss[k][j] * (alpha[k] - beta);
-        }
-      } else if (o.solver == "newton-cg") {
-        // Hessian-vector products: no dense p-by-p Hessian allocation.
-        std::vector<double> curvature(d.rows), r = g, p = g, hp(n), solution(n, 0);
-        result.work.row_visits += d.rows;
-        for (std::size_t i = 0; i < d.rows; ++i) {
-          double q = sigmoid(d.dot(i, w) + (o.fit_intercept ? w[d.cols] : 0));
-          curvature[i] = q * (1 - q) / d.rows;
-        }
-        double rr = inner(r, r), initial = rr;
-        for (std::size_t k = 0; k < std::min<std::size_t>(n, 50); ++k) {
-          ++result.work.hessian_vector_products;
-          result.work.row_visits += d.rows;
-          std::fill(hp.begin(), hp.end(), 0);
-          for (std::size_t i = 0; i < d.rows; ++i) {
-            double a = curvature[i] * (d.dot(i, p) + (o.fit_intercept ? p[d.cols] : 0));
-            d.add(i, a, absl::MakeSpan(hp));
-            if (o.fit_intercept) hp[d.cols] += a;
-          }
-          for (std::size_t j = 0; j < n; ++j)
-            hp[j] += (j < d.cols ? o.l2 : 0) * p[j] + 1e-10 * p[j];
-          double denom = inner(p, hp);
-          if (denom <= 0) break;
-          double a = rr / denom;
-          for (std::size_t j = 0; j < n; ++j) {
-            solution[j] += a * p[j];
-            r[j] -= a * hp[j];
-          }
-          double next = inner(r, r);
-          if (next <= initial * 1e-8) break;
-          for (std::size_t j = 0; j < n; ++j) p[j] = r[j] + next / rr * p[j];
-          rr = next;
-        }
-        direction = std::move(solution);
-      }
-      for (auto& x : direction) x = -x;
-      double slope = inner(g, direction);
-      if (!std::isfinite(slope) || slope >= 0) {
-        direction = g;
-        for (auto& x : direction) x = -x;
-        slope = -inner(g, g);
-      }
-      double step = o.solver == "gd" ? o.learning_rate : 1;
-      double next_f = 0;
-      bool accepted = false;
-      for (int ls = 0; ls < 40; ++ls) {
-        for (std::size_t j = 0; j < n; ++j) candidate[j] = w[j] + step * direction[j];
-        next_f = evaluate(candidate, absl::MakeSpan(next_g));
-        if (std::isfinite(next_f) && next_f <= f + 1e-4 * step * slope) {
-          accepted = true;
-          break;
-        }
-        step *= 0.5;
-      }
-      if (!accepted) {
+  });
+  loss /= data.rows;
+  for (std::size_t j = 0; j < data.cols; ++j) {
+    loss += .5 * options.l2 * parameters[j] * parameters[j];
+    gradient[j] += options.l2 * parameters[j];
+  }
+  return loss;
+}
+
+// One trainer owns the optimization state and work accounting. Each step has
+// exactly one responsibility; all row storage details stay in shared kernels.
+class LogisticTrainer {
+ public:
+  LogisticTrainer(const Dataset& data, const Options& options)
+      : d(data),
+        o(options),
+        n(d.cols + 1),
+        stochastic(o.solver == "sgd" || o.solver == "adam"),
+        adaptive(o.solver == "adam"),
+        w(n),
+        g(n),
+        direction(n),
+        candidate(n),
+        next_g(n),
+        curvature(o.solver == "newton-cg" ? d.rows : 0),
+        next_curvature(curvature.size()),
+        m(adaptive ? n : 0),
+        v(adaptive ? n : 0),
+        order(stochastic ? d.rows : 0),
+        rng(o.seed),
+        history(o.history_size),
+        start(std::chrono::steady_clock::now()) {
+    std::iota(order.begin(), order.end(), 0);
+    result.status = "max_epochs";
+    loss = objective_at(w, absl::MakeSpan(g));
+  }
+  Result run() {
+    record(0);
+    for (std::size_t epoch = 1; epoch <= o.max_epochs && norm(g) > o.tolerance; ++epoch) {
+      if (stochastic)
+        stochastic_step();
+      else if (!batch_step()) {
         result.status = "line_search_failed";
         break;
       }
-      if (o.solver == "lbfgs") {
-        std::vector<double> s(n), y(n);
-        for (std::size_t j = 0; j < n; ++j) {
-          s[j] = candidate[j] - w[j];
-          y[j] = next_g[j] - g[j];
-        }
-        if (inner(s, y) > 1e-12 * norm(s) * norm(y)) {
-          if (ss.size() == o.history_size) {
-            ss.erase(ss.begin());
-            ys.erase(ys.begin());
-          }
-          ss.push_back(std::move(s));
-          ys.push_back(std::move(y));
-        }
-      }
-      w.swap(candidate);
-      ++result.work.parameter_updates;
-      g.swap(next_g);
-      f = next_f;
+      record(epoch);
     }
-    record(epoch);
+    if (norm(g) <= o.tolerance) {
+      result.converged = true;
+      result.status = "converged";
+    }
+    result.intercept = o.fit_intercept ? w.back() : 0.;
+    w.pop_back();
+    result.weights = std::move(w);
+    return std::move(result);
   }
-  if (norm(g) <= o.tolerance) {
-    result.converged = true;
-    result.status = "converged";
+
+ private:
+  double objective_at(absl::Span<const double> parameters, absl::Span<double> gradient,
+                      bool trial = false) {
+    ++result.work.full_evaluations;
+    result.work.row_visits += d.rows;
+    return evaluate(d, parameters, o, gradient, absl::MakeSpan(trial ? next_curvature : curvature));
   }
-  result.intercept = o.fit_intercept ? w.back() : 0;
-  w.pop_back();
-  result.weights = std::move(w);
-  return result;
+  void record(std::size_t epoch) {
+    const double gradient_norm = norm(g);
+    if (!std::isfinite(loss) || !std::isfinite(gradient_norm))
+      throw std::runtime_error("non-finite objective; scale features or reduce learning rate");
+    const double seconds =
+        std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+    result.history.push_back({epoch, loss, gradient_norm, seconds, result.work});
+  }
+  void update_parameters() {
+    ++updates;
+    const double correction1 = adaptive ? 1 - std::pow(.9, updates) : 1;
+    const double correction2 = adaptive ? 1 - std::pow(.999, updates) : 1;
+    for (std::size_t j = 0; j < n; ++j) {
+      const double gradient = next_g[j] + (j < d.cols ? o.l2 * w[j] : 0.);
+      if (adaptive) {
+        m[j] = .9 * m[j] + .1 * gradient;
+        v[j] = .999 * v[j] + .001 * gradient * gradient;
+        w[j] -= o.learning_rate * (m[j] / correction1) / (std::sqrt(v[j] / correction2) + 1e-8);
+      } else
+        w[j] -= o.learning_rate * gradient;
+    }
+  }
+  void stochastic_step() {
+    std::shuffle(order.begin(), order.end(), rng);
+    detail::with_rows(d, [&](const auto& rows) {
+      for (std::size_t begin = 0; begin < d.rows;) {
+        const auto count = std::min(o.batch_size, d.rows - begin);
+        const double inverse_count = 1. / count;
+        ++result.work.batch_gradients;
+        ++result.work.parameter_updates;
+        result.work.row_visits += count;
+        std::fill(next_g.begin(), next_g.end(), 0.);
+        for (std::size_t pack = begin; pack < begin + count; pack += detail::kResponseBatch) {
+          const auto size = std::min(detail::kResponseBatch, begin + count - pack);
+          detail::ResponseBatch batch;
+          for (std::size_t lane = 0; lane < size; ++lane) {
+            const auto i = order[pack + lane];
+            batch.eta[lane] = rows[i].dot(w) + (o.fit_intercept ? w.back() : 0.);
+            batch.target[lane] = d.labels[i];
+          }
+          detail::Binomial{}.batch(batch, size);
+          for (std::size_t lane = 0; lane < size; ++lane) {
+            const double residual = batch.values[lane].residual * inverse_count;
+            rows[order[pack + lane]].add(residual, absl::MakeSpan(next_g));
+            if (o.fit_intercept) next_g.back() += residual;
+          }
+        }
+        update_parameters();
+        begin += count;
+      }
+    });
+    loss = objective_at(w, absl::MakeSpan(g));
+  }
+  void newton_direction() {
+    std::vector<double> r = g, p = g, hp(n), solution(n, 0.);
+    double rr = dot(r, r), initial = rr;
+    // Tighten the inner residual as the full gradient falls; solving a distant
+    // Newton model to fixed 1e-4 relative precision wastes data passes.
+    const double forcing = std::min(.5, std::sqrt(norm(g)));
+    // Inner accuracy below half the final tolerance cannot improve acceptance;
+    // the outer loop still checks the actual complete objective gradient.
+    const double floor = .5 * o.tolerance;
+    const double target = std::max(floor * floor, initial * forcing * forcing);
+    for (std::size_t k = 0; k < std::min<std::size_t>(n, 50); ++k) {
+      ++result.work.hessian_vector_products;
+      result.work.row_visits += d.rows;
+      detail::hessian_vector(d, curvature, p, o.l2, o.fit_intercept, absl::MakeSpan(hp), 1e-10);
+      const double denominator = dot(p, hp);
+      if (denominator <= 0) break;
+      const double alpha = rr / denominator;
+      for (std::size_t j = 0; j < n; ++j) {
+        solution[j] += alpha * p[j];
+        r[j] -= alpha * hp[j];
+      }
+      const double next = dot(r, r);
+      if (next <= target) break;
+      for (std::size_t j = 0; j < n; ++j) p[j] = r[j] + next / rr * p[j];
+      rr = next;
+    }
+    direction.swap(solution);
+  }
+  double descent_direction() {
+    direction = g;
+    if (o.solver == "lbfgs")
+      history.apply(direction);
+    else if (o.solver == "newton-cg")
+      newton_direction();
+    for (double& value : direction) value = -value;
+    double slope = dot(g, direction);
+    if (!std::isfinite(slope) || slope >= 0) {
+      direction = g;
+      for (double& value : direction) value = -value;
+      slope = -dot(g, g);
+    }
+    return slope;
+  }
+  bool line_search(double slope, double& next_loss) {
+    double step = o.solver == "gd" ? o.learning_rate : 1.;
+    for (int attempt = 0; attempt < 40; ++attempt) {
+      for (std::size_t j = 0; j < n; ++j) candidate[j] = w[j] + step * direction[j];
+      next_loss = objective_at(candidate, absl::MakeSpan(next_g), true);
+      if (std::isfinite(next_loss) && next_loss <= loss + 1e-4 * step * slope) return true;
+      step *= .5;
+    }
+    return false;
+  }
+  bool batch_step() {
+    const double slope = descent_direction();
+    double next_loss = 0;
+    if (!line_search(slope, next_loss)) return false;
+    if (o.solver == "lbfgs") history.update(w, candidate, g, next_g);
+    w.swap(candidate);
+    g.swap(next_g);
+    curvature.swap(next_curvature);
+    loss = next_loss;
+    ++result.work.parameter_updates;
+    return true;
+  }
+  const Dataset& d;
+  const Options& o;
+  std::size_t n;
+  bool stochastic, adaptive;
+  std::vector<double> w, g, direction, candidate, next_g, curvature, next_curvature, m, v;
+  std::vector<std::size_t> order;
+  std::mt19937_64 rng;
+  detail::LBFGSHistory history;
+  std::chrono::steady_clock::time_point start;
+  std::size_t updates = 0;
+  Result result;
+  double loss = 0;
+};
+}  // namespace
+
+double objective(const Dataset& data, absl::Span<const double> parameters, const Options& options,
+                 absl::Span<double> gradient) {
+  data.validate();
+  require(std::isfinite(options.l2) && options.l2 >= 0, "l2 must be finite and nonnegative");
+  require(parameters.size() == data.cols + 1 && gradient.size() == parameters.size(),
+          "invalid parameter shape");
+  require(detail::finite(parameters), "parameters must be finite");
+  return evaluate(data, parameters, options, gradient);
 }
-std::vector<double> predict(const Dataset& d, const Result& model) {
-  d.validate(false);
-  require(model.weights.size() == d.cols, "feature count mismatch");
+Result fit(const Dataset& data, const Options& options) {
+  data.validate();
+  validate_options(options);
+  return LogisticTrainer(data, options).run();
+}
+std::vector<double> predict_impl(const Dataset& data, const Result& model, bool known_storage) {
+  if (!known_storage) data.validate(false);
+  require(model.weights.size() == data.cols, "feature count mismatch");
   require(std::isfinite(model.intercept), "non-finite intercept");
-  for (double w : model.weights) require(std::isfinite(w), "non-finite weights");
-  std::vector<double> out(d.rows);
-  for (std::size_t i = 0; i < d.rows; ++i) {
-    const double score = d.dot(i, model.weights) + model.intercept;
-    if (std::isnan(score)) throw std::runtime_error("undefined prediction score; scale features");
-    out[i] = sigmoid(score);
-  }
-  return out;
+  require(detail::finite(model.weights), "non-finite weights");
+  std::vector<double> output(data.rows);
+  detail::with_rows(data, [&](const auto& rows) {
+    for (std::size_t i = 0; i < data.rows; ++i) {
+      const double score = rows[i].dot(model.weights) + model.intercept;
+      if (std::isnan(score)) throw std::runtime_error("undefined prediction score; scale features");
+      output[i] = detail::sigmoid(score);
+    }
+  });
+  return output;
+}
+Result detail::fit_logistic_validated(const Dataset& data, const Options& options) {
+  validate_targets(data, true);
+  validate_options(options);
+  return LogisticTrainer(data, options).run();
+}
+std::vector<double> predict(const Dataset& data, const Result& model) {
+  return predict_impl(data, model, false);
+}
+std::vector<double> detail::predict_logistic_validated(const Dataset& data, const Result& model) {
+  return predict_impl(data, model, true);
 }
 }  // namespace logitlab
