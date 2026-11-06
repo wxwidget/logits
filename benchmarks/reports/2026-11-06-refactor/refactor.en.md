@@ -1,6 +1,6 @@
 # Runtime refactoring: quality and performance acceptance
 
-**2× gate: PASS; geometric mean full-fit speedup = 2.0646×.**
+**2× gate: PASS; geometric mean full-fit speedup = 2.0337×.**
 
 Baseline: original 3374ad2 / 0.4.0. Candidate: refactored 0.4.1. All 18 primary workloads share identical data, objectives and full-gradient accuracy, verified independently. Four fixed-budget SGD/Adam workloads are reported separately.
 
@@ -21,24 +21,24 @@ Data contracts, storage/numeric kernels, response objectives, optimizer state an
 
 | Storage | Model/solver | Before fit ms [IQR] | After fit ms [IQR] | Speedup | Max stationarity before/after |
 | --- | --- | --- | --- | --- | --- |
-| csr | glm:binomial | 23.053 [22.845, 23.224] | 14.863 [14.821, 15.380] | 1.551× | 6.44e-08 / 4.73e-07 |
-| dense | glm:binomial | 31.425 [30.059, 32.923] | 12.486 [12.412, 12.692] | 2.517× | 2.35e-10 / 9.41e-08 |
-| csr | glm:gaussian | 25.933 [23.265, 26.590] | 11.680 [11.635, 12.335] | 2.220× | 9.89e-07 / 1.94e-07 |
-| dense | glm:gaussian | 36.571 [30.420, 43.164] | 9.458 [8.951, 9.469] | 3.867× | 5.63e-09 / 4.85e-08 |
-| csr | glm:poisson | 35.528 [34.768, 36.079] | 29.371 [28.533, 29.996] | 1.210× | 3.98e-07 / 4.05e-07 |
-| dense | glm:poisson | 35.072 [34.186, 38.486] | 18.081 [17.574, 19.341] | 1.940× | 4.02e-07 / 4.02e-07 |
-| csr | linear:cg | 21.303 [20.351, 21.793] | 11.391 [10.941, 11.572] | 1.870× | 6.67e-07 / 6.67e-07 |
-| dense | linear:cg | 22.942 [22.861, 23.033] | 8.125 [8.028, 8.471] | 2.824× | 7.30e-07 / 7.30e-07 |
-| csr | linear:fista | 29.713 [28.884, 29.950] | 15.305 [15.302, 15.990] | 1.941× | 8.44e-07 / 8.44e-07 |
-| dense | linear:fista | 48.328 [47.680, 53.975] | 14.486 [14.155, 14.929] | 3.336× | 5.10e-07 / 5.10e-07 |
-| csr | linear:proximal-gd | 23.710 [23.221, 23.999] | 11.931 [11.844, 11.959] | 1.987× | 9.66e-07 / 9.66e-07 |
-| dense | linear:proximal-gd | 40.765 [40.358, 40.828] | 11.908 [11.840, 12.304] | 3.423× | 8.51e-07 / 8.51e-07 |
-| csr | logistic:gd | 78.518 [78.193, 79.458] | 64.698 [64.523, 65.205] | 1.214× | 9.88e-07 / 9.88e-07 |
-| dense | logistic:gd | 98.539 [98.440, 99.202] | 53.744 [53.022, 54.866] | 1.834× | 9.97e-07 / 9.97e-07 |
-| csr | logistic:lbfgs | 20.392 [19.743, 20.814] | 16.000 [15.702, 16.395] | 1.275× | 6.76e-07 / 6.76e-07 |
-| dense | logistic:lbfgs | 18.373 [18.316, 18.663] | 10.546 [10.188, 10.660] | 1.742× | 8.77e-07 / 8.77e-07 |
-| csr | logistic:newton-cg | 25.912 [25.542, 26.495] | 15.152 [14.808, 15.243] | 1.710× | 6.71e-08 / 4.92e-07 |
-| dense | logistic:newton-cg | 34.339 [33.541, 35.532] | 11.429 [11.402, 11.752] | 3.004× | 1.26e-09 / 2.17e-07 |
+| csr | glm:binomial | 22.061 [21.520, 23.014] | 14.603 [14.166, 14.817] | 1.511× | 6.44e-08 / 4.73e-07 |
+| dense | glm:binomial | 30.603 [30.356, 30.768] | 13.153 [12.595, 13.467] | 2.327× | 2.35e-10 / 9.41e-08 |
+| csr | glm:gaussian | 23.255 [20.935, 24.476] | 11.855 [11.618, 11.897] | 1.962× | 9.89e-07 / 1.94e-07 |
+| dense | glm:gaussian | 26.116 [24.847, 26.194] | 8.838 [8.808, 9.026] | 2.955× | 5.63e-09 / 4.85e-08 |
+| csr | glm:poisson | 35.196 [35.116, 35.780] | 28.189 [27.846, 28.545] | 1.249× | 3.98e-07 / 4.05e-07 |
+| dense | glm:poisson | 34.932 [34.771, 36.949] | 17.528 [17.274, 18.520] | 1.993× | 4.02e-07 / 4.02e-07 |
+| csr | linear:cg | 22.385 [21.625, 22.567] | 10.263 [9.992, 10.704] | 2.181× | 6.67e-07 / 6.67e-07 |
+| dense | linear:cg | 22.001 [21.741, 22.559] | 8.055 [8.012, 8.285] | 2.731× | 7.30e-07 / 7.30e-07 |
+| csr | linear:fista | 30.302 [29.620, 30.437] | 15.106 [14.418, 15.150] | 2.006× | 8.44e-07 / 8.44e-07 |
+| dense | linear:fista | 48.584 [48.029, 48.718] | 14.244 [14.056, 14.781] | 3.411× | 5.10e-07 / 5.10e-07 |
+| csr | linear:proximal-gd | 23.234 [23.126, 23.319] | 11.323 [11.170, 11.732] | 2.052× | 9.66e-07 / 9.66e-07 |
+| dense | linear:proximal-gd | 38.905 [38.721, 41.436] | 12.706 [12.565, 12.841] | 3.062× | 8.51e-07 / 8.51e-07 |
+| csr | logistic:gd | 76.799 [76.560, 79.003] | 63.840 [63.666, 63.917] | 1.203× | 9.88e-07 / 9.88e-07 |
+| dense | logistic:gd | 102.765 [100.867, 103.714] | 55.767 [54.991, 56.200] | 1.843× | 9.97e-07 / 9.97e-07 |
+| csr | logistic:lbfgs | 19.586 [18.905, 19.667] | 15.650 [15.103, 16.060] | 1.251× | 6.76e-07 / 6.76e-07 |
+| dense | logistic:lbfgs | 19.963 [19.702, 20.103] | 10.802 [10.526, 11.740] | 1.848× | 8.77e-07 / 8.77e-07 |
+| csr | logistic:newton-cg | 26.068 [25.841, 26.873] | 14.272 [13.773, 14.362] | 1.827× | 6.71e-08 / 4.92e-07 |
+| dense | logistic:newton-cg | 33.737 [33.343, 34.238] | 11.580 [11.434, 11.779] | 2.913× | 1.26e-09 / 2.17e-07 |
 
 ![Full-fit speedup](speedup.png)
 
@@ -48,10 +48,10 @@ SGD/Adam share seeds, 30 epochs, batch=256 and constant learning rates. This tra
 
 | Storage | Model/solver | Before ms [IQR] | After ms [IQR] | Speedup | Before/after statuses |
 | --- | --- | --- | --- | --- | --- |
-| csr | logistic:adam | 133.102 [130.203, 135.557] | 123.656 [121.386, 124.229] | 1.076× | max_epochs / max_epochs |
-| dense | logistic:adam | 186.978 [185.636, 187.875] | 102.111 [100.122, 102.544] | 1.831× | max_epochs / max_epochs |
-| csr | logistic:sgd | 103.966 [103.532, 104.074] | 100.898 [99.035, 101.900] | 1.030× | max_epochs / max_epochs |
-| dense | logistic:sgd | 177.711 [177.626, 178.974] | 94.218 [92.066, 94.223] | 1.886× | max_epochs / max_epochs |
+| csr | logistic:adam | 129.039 [128.837, 129.746] | 122.664 [121.350, 125.638] | 1.052× | max_epochs / max_epochs |
+| dense | logistic:adam | 173.328 [173.123, 174.270] | 91.871 [91.745, 91.904] | 1.887× | max_epochs / max_epochs |
+| csr | logistic:sgd | 102.397 [101.649, 106.860] | 96.763 [96.633, 96.914] | 1.058× | max_epochs / max_epochs |
+| dense | logistic:sgd | 177.270 [176.327, 177.564] | 93.998 [92.154, 94.016] | 1.886× | max_epochs / max_epochs |
 
 ## Core time, prediction and memory
 
@@ -59,28 +59,28 @@ Values below are seed medians. Prediction includes input conversion. RSS is whol
 
 | Storage | Model/solver | Core ms before/after | Predict ms before/after | RSS MiB before/after |
 | --- | --- | --- | --- | --- |
-| csr | glm:binomial | 18.404 / 12.185 | 1.295 / 0.943 | 108.7 / 102.9 |
-| dense | glm:binomial | 25.991 / 10.760 | 1.278 / 0.849 | 113.2 / 113.2 |
-| csr | glm:gaussian | 21.093 / 9.016 | 1.241 / 0.926 | 108.6 / 102.8 |
-| dense | glm:gaussian | 32.305 / 7.425 | 1.307 / 0.832 | 113.2 / 113.2 |
-| csr | glm:poisson | 30.678 / 26.205 | 1.243 / 1.004 | 108.6 / 102.8 |
-| dense | glm:poisson | 30.440 / 15.514 | 1.179 / 0.873 | 113.1 / 113.2 |
-| csr | linear:cg | 15.831 / 8.168 | 1.295 / 0.965 | 108.7 / 102.8 |
-| dense | linear:cg | 19.123 / 6.349 | 1.173 / 0.760 | 113.2 / 113.3 |
-| csr | linear:fista | 24.902 / 12.303 | 1.164 / 0.981 | 108.7 / 102.8 |
-| dense | linear:fista | 43.476 / 12.411 | 1.125 / 0.800 | 113.1 / 113.3 |
-| csr | linear:proximal-gd | 18.355 / 9.094 | 1.268 / 0.983 | 108.9 / 103.1 |
-| dense | linear:proximal-gd | 36.797 / 9.876 | 1.104 / 0.777 | 113.2 / 113.3 |
-| csr | logistic:adam | 126.975 / 118.664 | 1.267 / 0.999 | 108.6 / 102.9 |
-| dense | logistic:adam | 180.091 / 93.161 | 1.267 / 0.813 | 113.2 / 113.3 |
-| csr | logistic:gd | 72.617 / 60.259 | 1.285 / 1.010 | 108.7 / 102.9 |
-| dense | logistic:gd | 92.530 / 49.599 | 1.238 / 0.737 | 113.1 / 113.2 |
-| csr | logistic:lbfgs | 14.479 / 12.857 | 1.326 / 0.967 | 108.6 / 102.8 |
-| dense | logistic:lbfgs | 15.119 / 8.282 | 1.240 / 0.733 | 113.2 / 113.1 |
-| csr | logistic:newton-cg | 21.371 / 11.246 | 1.299 / 0.993 | 108.6 / 102.8 |
-| dense | logistic:newton-cg | 30.992 / 9.420 | 1.193 / 0.742 | 113.2 / 113.2 |
-| csr | logistic:sgd | 97.012 / 97.223 | 1.342 / 0.978 | 108.7 / 102.8 |
-| dense | logistic:sgd | 174.216 / 90.874 | 1.253 / 0.743 | 113.2 / 113.2 |
+| csr | glm:binomial | 17.685 / 12.298 | 1.261 / 0.842 | 108.7 / 102.8 |
+| dense | glm:binomial | 26.677 / 11.356 | 1.245 / 0.877 | 113.2 / 113.3 |
+| csr | glm:gaussian | 19.281 / 8.752 | 1.294 / 0.788 | 108.6 / 102.8 |
+| dense | glm:gaussian | 22.226 / 7.013 | 1.181 / 0.825 | 113.2 / 113.2 |
+| csr | glm:poisson | 30.437 / 24.986 | 1.278 / 0.880 | 108.6 / 102.8 |
+| dense | glm:poisson | 31.182 / 15.071 | 1.141 / 0.858 | 113.2 / 113.2 |
+| csr | linear:cg | 16.325 / 7.725 | 1.299 / 0.770 | 108.7 / 102.8 |
+| dense | linear:cg | 18.167 / 6.169 | 1.064 / 0.812 | 113.2 / 113.2 |
+| csr | linear:fista | 24.774 / 11.735 | 1.176 / 0.827 | 108.7 / 102.8 |
+| dense | linear:fista | 44.797 / 12.321 | 1.163 / 0.792 | 113.2 / 113.2 |
+| csr | linear:proximal-gd | 18.862 / 8.869 | 1.260 / 0.774 | 108.9 / 103.1 |
+| dense | linear:proximal-gd | 35.474 / 10.790 | 1.140 / 0.762 | 113.1 / 113.3 |
+| csr | logistic:adam | 124.344 / 119.106 | 1.239 / 0.821 | 108.7 / 102.9 |
+| dense | logistic:adam | 170.025 / 89.523 | 1.248 / 0.774 | 113.2 / 113.1 |
+| csr | logistic:gd | 71.817 / 60.720 | 1.357 / 0.907 | 108.7 / 102.9 |
+| dense | logistic:gd | 95.374 / 53.565 | 1.322 / 0.791 | 113.2 / 113.2 |
+| csr | logistic:lbfgs | 15.186 / 12.792 | 1.347 / 0.877 | 108.6 / 102.8 |
+| dense | logistic:lbfgs | 16.036 / 8.200 | 1.294 / 0.774 | 113.2 / 113.3 |
+| csr | logistic:newton-cg | 20.703 / 11.529 | 1.333 / 0.893 | 108.6 / 102.8 |
+| dense | logistic:newton-cg | 29.747 / 9.308 | 1.190 / 0.788 | 113.2 / 113.2 |
+| csr | logistic:sgd | 97.120 / 92.353 | 1.335 / 0.823 | 108.7 / 102.8 |
+| dense | logistic:sgd | 171.945 / 88.986 | 1.297 / 0.776 | 113.2 / 113.3 |
 
 ## Held-out quality
 
@@ -115,7 +115,7 @@ Seed medians below use Binomial log loss or Gaussian/Poisson MSE. Every paired r
 
 - CPU: INTEL(R) XEON(R) PLATINUM 8573C; affinity: [0]; threads: {'OMP_NUM_THREADS': '1', 'OPENBLAS_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1'}.
 - Python 3.12.14; NumPy 2.3.5; SciPy 1.17.0; libc ['glibc', '2.41'].
-- Measured: 2026-11-06T20:46:31.211664+08:00; seeds: [42, 43, 44]; repeats: 3.
+- Measured: 2026-11-06T21:13:46.561671+08:00; seeds: [42, 43, 44]; repeats: 3.
 - Dense: 24,000 × 96; CSR: 24,000 × 2,000, density 1%; training 80%, held-out 20%.
 - L2=.1; linear proximal solvers additionally use L1=.01. Unpenalized intercept; primary tolerance=1e-6.
 - SGD learning rate=.03; Adam=.003. Primary budgets: logistic/GLM 300, linear 1,000; actual work retained.

@@ -136,7 +136,7 @@ Link the `logitlab::core` CMake target. The [complete C++ example](examples/trai
 
 **Runtime refactoring:** [中文验收报告](benchmarks/reports/2026-11-06-refactor/refactor.zh-CN.md) · [English acceptance report](benchmarks/reports/2026-11-06-refactor/refactor.en.md). The paired study compares the preserved 0.4.0 binary with 0.4.1 across **18 converged dense/CSR workloads**, plus four separate SGD/Adam workloads. It measures complete Python-facing fits, checks objective/stationarity and predictive quality independently, and retains all cases, source/build hashes and uncertainty. The declared 2× gate is the geometric mean across the 18 primary workloads; consult the measured report for its outcome and individual results.
 
-The recorded Xeon 8573C run achieved **2.0646× geometric-mean full-fit speedup**, with individual primary workloads ranging from **1.21× to 3.87×**, at matched final accuracy. This passes the declared average 2× gate on that machine; optional backends and different data/hardware require remeasurement.
+The recorded Xeon 8573C run achieved **2.0337× geometric-mean full-fit speedup**, with individual primary workloads ranging from **1.20× to 3.41×**, at matched final accuracy. This passes the declared average 2× gate on that machine; optional backends and different data/hardware require remeasurement.
 
 Maximum function complexity fell from **66 to 15 in C++** and **27 to 14 in Python**. CI enforces a per-function budget of 15. [Responsibilities, numerical contracts and exact reproduction commands →](docs/refactoring.md)
 

@@ -248,6 +248,12 @@
     },
     {
       "file": "src/detail/simd.hpp",
+      "name": "logitlab::detail::simd::copy_indices32",
+      "complexity": 5,
+      "lines": 19
+    },
+    {
+      "file": "src/detail/simd.hpp",
       "name": "logitlab::detail::simd::all_finite",
       "complexity": 5,
       "lines": 13
@@ -260,9 +266,15 @@
     },
     {
       "file": "src/detail/simd.hpp",
-      "name": "logitlab::detail::simd::dense_dot",
+      "name": "logitlab::detail::simd::opposing_product_overflows",
       "complexity": 3,
-      "lines": 13
+      "lines": 11
+    },
+    {
+      "file": "src/detail/simd.hpp",
+      "name": "logitlab::detail::simd::dense_dot",
+      "complexity": 5,
+      "lines": 18
     },
     {
       "file": "src/detail/simd.hpp",
@@ -705,8 +717,8 @@
     {
       "file": "bindings/data.cpp",
       "name": "logitlab::bindings::copy_integers",
-      "complexity": 4,
-      "lines": 12
+      "complexity": 8,
+      "lines": 20
     },
     {
       "file": "bindings/data.cpp",

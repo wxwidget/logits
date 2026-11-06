@@ -6,6 +6,7 @@
 - Enforce a maximum function complexity of 15 for the modern C++/binding and Python runtime in CI, with pinned audit/format tools.
 - Add runtime-dispatched AVX2/FMA, optional detected system vector math and improved canonical CSR reductions, with a tested scalar fallback and unchanged final accuracy requirements.
 - Reuse accepted curvature, quadratic/affine recurrences and owned-data validation; avoid redundant CSR index and Python metadata conversions.
+- Preserve undefined-score rejection across GCC/Clang fused arithmetic, including SIMD accumulator lanes, while allowing valid one-sided logistic saturation.
 - Add a paired 18-workload converged-fit acceptance benchmark plus a separate four-workload stochastic track, independent numerical checks and bilingual reports with raw/source/build hashes. See the linked reports for measured results and hardware limits.
 
 ## 0.4.0 — Canonical generalized linear models

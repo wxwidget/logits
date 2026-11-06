@@ -92,8 +92,8 @@ The historical LR/FTRL/L-BFGS programs use Abseil and retain their original conv
 ```bash
 python -m pip install '.[test,benchmark,quality]'
 python tools/check_quality.py
-ruff format --check python/logitlab benchmarks/refactor.py benchmarks/refactor_report.py tools/check_quality.py tests/test_refactor.py
-ruff check --select F821,F823 python/logitlab benchmarks/refactor.py benchmarks/refactor_report.py tools/check_quality.py tests/test_refactor.py
+ruff format --check python/logitlab benchmarks/refactor.py benchmarks/refactor_report.py tools/check_quality.py tools/report_ctest.py tests/test_refactor.py
+ruff check --select F821,F823 python/logitlab benchmarks/refactor.py benchmarks/refactor_report.py tools/check_quality.py tools/report_ctest.py tests/test_refactor.py
 ```
 
 The gate caps each modern C++/binding and Python runtime function at cyclomatic complexity 15. Lizard, Radon and Ruff versions are pinned in the optional `quality` extra. Historical experiments and generated research reports are identified separately from the maintained runtime. See [the refactoring design and acceptance protocol](refactoring.md).

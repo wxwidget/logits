@@ -1,8 +1,8 @@
 # Intermediate candidates / 中间候选版本
 
-These are complete earlier experiments on intermediate source/binary variants, all below the unchanged 2× gate. They are retained for audit and are not substituted for the final candidate. No numerical threshold or workload was changed.
+These are complete earlier experiments on intermediate source/binary variants, using the unchanged 2× gate. The first four failed; the fifth passed timing but was superseded after a cross-compiler overflow fix. They are retained for audit and are not substituted for the final candidate. No numerical threshold or workload was changed.
 
-以下为中间代码版本的完整实验，均未通过同一个 2× 门禁。保留原始数据供审查，不用它们替代最终候选，不修改数值阈值或场景。
+以下为中间代码版本的完整实验，使用同一个 2× 门禁。前四轮未通过，第五轮性能通过，但随后发现需修复跨编译器溢出行为，因此不作为最终版本证据。保留原始数据供审查，不用它们替代最终候选，不修改数值阈值或场景。
 
 | Attempt | Geometric mean | Gate | Raw data |
 | --- | --- | --- | --- |
@@ -10,6 +10,8 @@ These are complete earlier experiments on intermediate source/binary variants, a
 | 2 | 1.917366× | NOT MET | [attempt-2.results.json.gz](attempt-2.results.json.gz) |
 | 3 | 1.941797× | NOT MET | [attempt-3.results.json.gz](attempt-3.results.json.gz) |
 | 4 | 1.989371× | NOT MET | [attempt-4.results.json.gz](attempt-4.results.json.gz) |
+| 5 | 2.064578× | PASS, superseded by overflow fix | [attempt-5.results.json.gz](attempt-5.results.json.gz) |
+| 6 | 1.965264× | NOT MET, overflow fix | [attempt-6.results.json.gz](attempt-6.results.json.gz) |
 
 Each gzip expands to the full JSON: all paired measurements, histories, accuracy checks, source/binary hashes and build/machine metadata. The final `results.json` uses the final source variant and a fresh complete run.
 
