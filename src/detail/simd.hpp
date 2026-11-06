@@ -42,6 +42,15 @@ LOGITLAB_AVX2 inline double sum(__m256d value) {
   _mm256_store_pd(lanes, value);
   return (lanes[0] + lanes[1]) + (lanes[2] + lanes[3]);
 }
+inline bool opposing_product_overflows(const double* x, const double* y, std::size_t size) {
+  bool positive = false, negative = false;
+  for (std::size_t j = 0; j < size; ++j) {
+    const double product = x[j] * y[j];
+    positive |= product == std::numeric_limits<double>::infinity();
+    negative |= product == -std::numeric_limits<double>::infinity();
+  }
+  return positive && negative;
+}
 LOGITLAB_AVX2 inline double dense_dot(const double* x, const double* y, std::size_t size) {
   __m256d a = _mm256_setzero_pd(), b = a, c = a, d = a;
   std::size_t j = 0;
@@ -53,6 +62,11 @@ LOGITLAB_AVX2 inline double dense_dot(const double* x, const double* y, std::siz
   }
   double result = sum(_mm256_add_pd(_mm256_add_pd(a, b), _mm256_add_pd(c, d)));
   for (; j < size; ++j) result += x[j] * y[j];
+  // Clang may fuse a tail multiply/add: fma(-2, DBL_MAX, +Inf) stays
+  // infinite where separate overflowing products cancel to NaN. Preserve
+  // rejection of that undefined score; ordinary finite dots skip this scan.
+  if (std::isinf(result) && opposing_product_overflows(x, y, size))
+    return std::numeric_limits<double>::quiet_NaN();
   return result;
 }
 LOGITLAB_AVX2 inline void dense_add(const double* x, double scale, double* out, std::size_t size) {

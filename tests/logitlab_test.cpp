@@ -133,6 +133,21 @@ int main() {
       undefined_rejected = true;
     }
     check(undefined_rejected, "undefined prediction score accepted");
+    // Exercise opposing overflow products in the same SIMD accumulator lane.
+    extreme.cols = 32;
+    extreme.values.assign(32, 0.);
+    extreme.values[0] = 2.;
+    extreme.values[16] = -2.;
+    overflow_model.weights.assign(32, std::numeric_limits<double>::max());
+    undefined_rejected = false;
+    try {
+      predict(extreme, overflow_model);
+    } catch (const std::runtime_error&) {
+      undefined_rejected = true;
+    }
+    check(undefined_rejected, "undefined SIMD prediction score accepted");
+    extreme.values[16] = 0.;
+    check(predict(extreme, overflow_model)[0] == 1., "signed overflow must still saturate");
     std::cout << "Core checks passed\n";
     return 0;
   } catch (const std::exception& e) {
